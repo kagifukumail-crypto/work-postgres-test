@@ -136,7 +136,13 @@ const pool = new Pool({
         const queryText = `
           SELECT
             tknm,
-            SUM(jyu_kin::numeric) AS total_kin,
+            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 100 AND 199 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS lz_kin,
+            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 200 AND 299 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS pz_kin,
+            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 400 AND 499 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS gaityu_kin,
+            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 300 AND 398 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS tyukai_kin,
+            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer = 399 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS zaiko_kin,
+            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 500 AND 599 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS hoka_kin,
+            SUM(COALESCE(nohin_kin, 0)::numeric) AS total_kin,
             SUM(CASE WHEN tyoha = '0' THEN jyu_kin::numeric ELSE 0 END) AS total_kin_tyoha0
           FROM uri_d
           WHERE nohinymd >= $1 AND nohinymd <= $2

@@ -145,6 +145,16 @@
             <strong>帳端区分0 合計：</strong><span id="grand-total-tyoha0">-</span>
           </span>
         </div>
+        <div style="margin-bottom: 12px; background: #eef6ff; padding: 12px 15px; border-radius: 5px; border: 1px solid #bfdbfe;">
+          <strong style="display:block; margin-bottom:8px;">カテゴリ別総合計</strong>
+          <span style="margin-right: 16px;"><strong>LZ売上：</strong><span id="sum-lz-kin">-</span></span>
+          <span style="margin-right: 16px;"><strong>PZ売上：</strong><span id="sum-pz-kin">-</span></span>
+          <span style="margin-right: 16px;"><strong>外注売上：</strong><span id="sum-gaityu-kin">-</span></span>
+          <span style="margin-right: 16px;"><strong>仲介売上：</strong><span id="sum-tyukai-kin">-</span></span>
+          <span style="margin-right: 16px;"><strong>在庫売上：</strong><span id="sum-zaiko-kin">-</span></span>
+          <span style="margin-right: 16px;"><strong>他の売上：</strong><span id="sum-hoka-kin">-</span></span>
+          <span><strong>合計金額：</strong><span id="sum-total-kin">-</span></span>
+        </div>
 
         <div class="tabs" role="tablist">
           <button type="button" class="tab active" id="tab-summary" role="tab" aria-selected="true" onclick="switchTab('summary')">会社別集計</button>
@@ -206,6 +216,9 @@
 
   <script>
     const BASE_URL = "http://127.0.0.1:5001/work-postgres-test/us-central1/getData";
+    const SUMMARY_MONEY_KEYS = ["lz_kin", "pz_kin", "gaityu_kin", "tyukai_kin", "zaiko_kin", "hoka_kin", "total_kin"];
+    let summarySortState = { key: null, dir: "asc" };
+    let latestSummaryRows = [];
 
     function switchMenu(name) {
       const isSales = name === "sales";
@@ -270,6 +283,81 @@
     function formatNum(val) {
       const n = Number(val);
       return Number.isFinite(n) ? n.toLocaleString() : val;
+    }
+
+    function getSummaryDisplayColumns() {
+      return [
+        { key: "tknm", label: "得意先名" },
+        { key: "lz_kin", label: "LZ売上" },
+        { key: "pz_kin", label: "PZ売上" },
+        { key: "gaityu_kin", label: "外注売上" },
+        { key: "tyukai_kin", label: "仲介売上" },
+        { key: "zaiko_kin", label: "在庫売上" },
+        { key: "hoka_kin", label: "他の売上" },
+        { key: "total_kin", label: "合計金額" }
+      ];
+    }
+
+    function getSortedSummaryRows(rows) {
+      if (!summarySortState.key) return [...rows];
+      const sorted = [...rows];
+      const key = summarySortState.key;
+      const dir = summarySortState.dir === "desc" ? -1 : 1;
+      sorted.sort((a, b) => {
+        const av = Number(a[key]);
+        const bv = Number(b[key]);
+        const aa = Number.isFinite(av) ? av : 0;
+        const bb = Number.isFinite(bv) ? bv : 0;
+        if (aa < bb) return -1 * dir;
+        if (aa > bb) return 1 * dir;
+        return 0;
+      });
+      return sorted;
+    }
+
+    function renderSummaryTable(rows) {
+      const theadSum = document.getElementById("table-head-summary");
+      const tbodySum = document.getElementById("table-body-summary");
+      if (!theadSum || !tbodySum) return;
+
+      const displayColumns = getSummaryDisplayColumns();
+      const sortedRows = getSortedSummaryRows(rows);
+
+      theadSum.innerHTML = "";
+      displayColumns.forEach((col) => {
+        const th = document.createElement("th");
+        const isSortable = SUMMARY_MONEY_KEYS.includes(col.key);
+        const isActive = summarySortState.key === col.key;
+        const arrow = isActive ? (summarySortState.dir === "asc" ? " ▲" : " ▼") : "";
+        th.textContent = `${col.label}${arrow}`;
+        if (isSortable) {
+          th.style.cursor = "pointer";
+          th.title = "クリックで昇順/降順を切り替え";
+          th.onclick = () => toggleSummarySort(col.key);
+        }
+        theadSum.appendChild(th);
+      });
+
+      tbodySum.innerHTML = "";
+      sortedRows.forEach((row) => {
+        const tr = document.createElement("tr");
+        displayColumns.forEach((col) => {
+          const td = document.createElement("td");
+          td.textContent = SUMMARY_MONEY_KEYS.includes(col.key) ? formatNum(row[col.key]) : row[col.key];
+          tr.appendChild(td);
+        });
+        tbodySum.appendChild(tr);
+      });
+    }
+
+    function toggleSummarySort(key) {
+      if (summarySortState.key === key) {
+        summarySortState.dir = summarySortState.dir === "asc" ? "desc" : "asc";
+      } else {
+        summarySortState.key = key;
+        summarySortState.dir = "asc";
+      }
+      renderSummaryTable(latestSummaryRows);
     }
 
     async function loadSqlTables() {
@@ -401,6 +489,13 @@
     async function fetchData() {
       const grandTotalEl = document.getElementById("grand-total");
       const grandTotalTyoha0El = document.getElementById("grand-total-tyoha0");
+      const sumLzKinEl = document.getElementById("sum-lz-kin");
+      const sumPzKinEl = document.getElementById("sum-pz-kin");
+      const sumGaityuKinEl = document.getElementById("sum-gaityu-kin");
+      const sumTyukaiKinEl = document.getElementById("sum-tyukai-kin");
+      const sumZaikoKinEl = document.getElementById("sum-zaiko-kin");
+      const sumHokaKinEl = document.getElementById("sum-hoka-kin");
+      const sumTotalKinEl = document.getElementById("sum-total-kin");
       const startDate = document.getElementById("start-date").value;
       const endDate = document.getElementById("end-date").value;
 
@@ -418,10 +513,17 @@
 
       grandTotalEl.textContent = "計算中...";
       grandTotalTyoha0El.textContent = "計算中...";
+      sumLzKinEl.textContent = "計算中...";
+      sumPzKinEl.textContent = "計算中...";
+      sumGaityuKinEl.textContent = "計算中...";
+      sumTyukaiKinEl.textContent = "計算中...";
+      sumZaikoKinEl.textContent = "計算中...";
+      sumHokaKinEl.textContent = "計算中...";
+      sumTotalKinEl.textContent = "計算中...";
 
       if (tab === "summary") {
         theadSum.innerHTML = "";
-        tbodySum.innerHTML = "<tr><td colspan='2'>読み込み中...</td></tr>";
+        tbodySum.innerHTML = "<tr><td colspan='8'>読み込み中...</td></tr>";
       } else {
         theadDet.innerHTML = "";
         tbodyDet.innerHTML = "<tr><td colspan='5'>読み込み中...</td></tr>";
@@ -437,33 +539,22 @@
           populateTknmSelect(data);
 
           if (data.length === 0) {
-            tbodySum.innerHTML = "<tr><td colspan='2'>指定された期間のデータがありません</td></tr>";
+            latestSummaryRows = [];
+            tbodySum.innerHTML = "<tr><td colspan='8'>指定された期間のデータがありません</td></tr>";
             grandTotalEl.textContent = "0";
             grandTotalTyoha0El.textContent = "0";
+            sumLzKinEl.textContent = "0";
+            sumPzKinEl.textContent = "0";
+            sumGaityuKinEl.textContent = "0";
+            sumTyukaiKinEl.textContent = "0";
+            sumZaikoKinEl.textContent = "0";
+            sumHokaKinEl.textContent = "0";
+            sumTotalKinEl.textContent = "0";
             return;
           }
 
-          const displayColumns = [
-            { key: "tknm", label: "売上先会社名" },
-            { key: "total_kin", label: "合計金額" }
-          ];
-
-          displayColumns.forEach((col) => {
-            const th = document.createElement("th");
-            th.textContent = col.label;
-            theadSum.appendChild(th);
-          });
-
-          tbodySum.innerHTML = "";
-          data.forEach((row) => {
-            const tr = document.createElement("tr");
-            displayColumns.forEach((col) => {
-              const td = document.createElement("td");
-              td.textContent = col.key === "total_kin" ? formatNum(row[col.key]) : row[col.key];
-              tr.appendChild(td);
-            });
-            tbodySum.appendChild(tr);
-          });
+          latestSummaryRows = data;
+          renderSummaryTable(data);
 
           const grandTotal = data.reduce((sum, row) => {
             const n = Number(row.total_kin);
@@ -476,6 +567,21 @@
             return Number.isFinite(n) ? sum + n : sum;
           }, 0);
           grandTotalTyoha0El.textContent = grandTotalTyoha0.toLocaleString();
+
+          const sumLzKin = data.reduce((sum, row) => sum + (Number.isFinite(Number(row.lz_kin)) ? Number(row.lz_kin) : 0), 0);
+          const sumPzKin = data.reduce((sum, row) => sum + (Number.isFinite(Number(row.pz_kin)) ? Number(row.pz_kin) : 0), 0);
+          const sumGaityuKin = data.reduce((sum, row) => sum + (Number.isFinite(Number(row.gaityu_kin)) ? Number(row.gaityu_kin) : 0), 0);
+          const sumTyukaiKin = data.reduce((sum, row) => sum + (Number.isFinite(Number(row.tyukai_kin)) ? Number(row.tyukai_kin) : 0), 0);
+          const sumZaikoKin = data.reduce((sum, row) => sum + (Number.isFinite(Number(row.zaiko_kin)) ? Number(row.zaiko_kin) : 0), 0);
+          const sumHokaKin = data.reduce((sum, row) => sum + (Number.isFinite(Number(row.hoka_kin)) ? Number(row.hoka_kin) : 0), 0);
+          const sumTotalKin = data.reduce((sum, row) => sum + (Number.isFinite(Number(row.total_kin)) ? Number(row.total_kin) : 0), 0);
+          sumLzKinEl.textContent = sumLzKin.toLocaleString();
+          sumPzKinEl.textContent = sumPzKin.toLocaleString();
+          sumGaityuKinEl.textContent = sumGaityuKin.toLocaleString();
+          sumTyukaiKinEl.textContent = sumTyukaiKin.toLocaleString();
+          sumZaikoKinEl.textContent = sumZaikoKin.toLocaleString();
+          sumHokaKinEl.textContent = sumHokaKin.toLocaleString();
+          sumTotalKinEl.textContent = sumTotalKin.toLocaleString();
         } else {
           const tknm = document.getElementById("tknm-select").value;
           if (!tknm) {
@@ -483,6 +589,13 @@
             tbodyDet.innerHTML = "<tr><td colspan='5'>売上先会社名を選択してください</td></tr>";
             grandTotalEl.textContent = "-";
             grandTotalTyoha0El.textContent = "-";
+            sumLzKinEl.textContent = "-";
+            sumPzKinEl.textContent = "-";
+            sumGaityuKinEl.textContent = "-";
+            sumTyukaiKinEl.textContent = "-";
+            sumZaikoKinEl.textContent = "-";
+            sumHokaKinEl.textContent = "-";
+            sumTotalKinEl.textContent = "-";
             alert("売上先会社名を選択してください");
             return;
           }
@@ -510,6 +623,13 @@
             tbodyDet.innerHTML = "<tr><td colspan='5'>指定された条件のデータがありません</td></tr>";
             grandTotalEl.textContent = "0";
             grandTotalTyoha0El.textContent = "0";
+            sumLzKinEl.textContent = "-";
+            sumPzKinEl.textContent = "-";
+            sumGaityuKinEl.textContent = "-";
+            sumTyukaiKinEl.textContent = "-";
+            sumZaikoKinEl.textContent = "-";
+            sumHokaKinEl.textContent = "-";
+            sumTotalKinEl.textContent = "-";
             return;
           }
 
@@ -540,14 +660,28 @@
             return Number.isFinite(n) ? sum + n : sum;
           }, 0);
           grandTotalTyoha0El.textContent = grandTotalTyoha0.toLocaleString();
+          sumLzKinEl.textContent = "-";
+          sumPzKinEl.textContent = "-";
+          sumGaityuKinEl.textContent = "-";
+          sumTyukaiKinEl.textContent = "-";
+          sumZaikoKinEl.textContent = "-";
+          sumHokaKinEl.textContent = "-";
+          sumTotalKinEl.textContent = "-";
         }
       } catch (error) {
         console.error(error);
-        const colspan = tab === "summary" ? "2" : "5";
+        const colspan = tab === "summary" ? "8" : "5";
         const tbodyErr = tab === "summary" ? tbodySum : tbodyDet;
         tbodyErr.innerHTML = `<tr><td colspan='${colspan}' style='color:red;'>エラーが発生しました。コンソールを確認してください。</td></tr>`;
         grandTotalEl.textContent = "エラー";
         grandTotalTyoha0El.textContent = "エラー";
+        sumLzKinEl.textContent = "エラー";
+        sumPzKinEl.textContent = "エラー";
+        sumGaityuKinEl.textContent = "エラー";
+        sumTyukaiKinEl.textContent = "エラー";
+        sumZaikoKinEl.textContent = "エラー";
+        sumHokaKinEl.textContent = "エラー";
+        sumTotalKinEl.textContent = "エラー";
       }
     }
   </script></body>
