@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>社内データ表示アプリ</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; background-color: #f9f9f9; }
+    h2 { color: #333; }
+    .btn { padding: 10px 20px; background-color: #039be5; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+    .btn:hover { background-color: #0277bd; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; background-color: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background-color: #f2f2f2; font-weight: bold; }
+    .tabs { display: flex; gap: 4px; margin-top: 16px; margin-bottom: 0; }
+    .tab {
+      padding: 10px 18px;
+      border: 1px solid #ccc;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      background: #eee;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .tab.active {
+      background: #fff;
+      font-weight: bold;
+      border-color: #bbb;
+      margin-bottom: -1px;
+      padding-bottom: 11px;
+    }
+    .tab-panel {
+      display: none;
+      background: #fff;
+      padding: 15px;
+      border: 1px solid #bbb;
+      border-radius: 0 6px 6px 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .tab-panel.active { display: block; }
+    .detail-toolbar { margin-bottom: 12px; }
+    .detail-toolbar label { margin-right: 8px; }
+    .detail-toolbar select {
+      min-width: 280px;
+      padding: 8px 10px;
+      font-size: 15px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px;
+      background: #1f2937;
+      color: #fff;
+      padding: 20px 12px;
+      box-sizing: border-box;
+    }
+    .sidebar-title {
+      font-size: 14px;
+      color: #cbd5e1;
+      margin-bottom: 12px;
+      padding-left: 8px;
+    }
+    .menu-btn {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: #e5e7eb;
+      cursor: pointer;
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+    .menu-btn:hover { background: #374151; }
+    .menu-btn.active {
+      background: #2563eb;
+      color: #fff;
+      font-weight: bold;
+    }
+    .main-content {
+      flex: 1;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .page { display: none; }
+    .page.active { display: block; }
+    .sql-card {
+      background: #fff;
+      border-radius: 6px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 14px;
+    }
+    .sql-card pre {
+      margin: 0;
+      white-space: pre-wrap;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 13px;
+    }
+    .sql-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .sql-toolbar label { font-size: 14px; color: #333; }
+    .sql-toolbar select {
+      min-width: 220px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+      background: #fff;
+    }
+    .sql-status { color: #666; font-size: 13px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">メニュー</div>
+      <button type="button" id="menu-sales" class="menu-btn active" onclick="switchMenu('sales')">売上データ</button>
+      <button type="button" id="menu-sql" class="menu-btn" onclick="switchMenu('sql')">SQL情報</button>
+    </aside>
+
+    <main class="main-content">
+      <section id="page-sales" class="page active">
+        <h2>売上データ</h2>
+
+        <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <label>期間指定：</label>
+          <input type="date" id="start-date"> 〜 <input type="date" id="end-date">
+          <button class="btn" onclick="fetchData()">データを取得する</button>
+        </div>
+
+        <div style="margin-bottom: 12px; background: #fff8e1; padding: 12px 15px; border-radius: 5px; border: 1px solid #ffe082;">
+          <strong>総合計：</strong><span id="grand-total">-</span>
+          <span style="margin-left: 20px;">
+            <strong>帳端区分0 合計：</strong><span id="grand-total-tyoha0">-</span>
+          </span>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" id="tab-summary" role="tab" aria-selected="true" onclick="switchTab('summary')">会社別集計</button>
+          <button type="button" class="tab" id="tab-detail" role="tab" aria-selected="false" onclick="switchTab('detail')">売上先明細</button>
+        </div>
+
+        <div id="panel-summary" class="tab-panel active" role="tabpanel">
+          <table>
+            <thead>
+              <tr id="table-head-summary"></tr>
+            </thead>
+            <tbody id="table-body-summary"></tbody>
+          </table>
+        </div>
+
+        <div id="panel-detail" class="tab-panel" role="tabpanel">
+          <div class="detail-toolbar">
+            <label for="tknm-select">売上先会社名：</label>
+            <select id="tknm-select">
+              <option value="">選択してください</option>
+            </select>
+            <span style="margin-left: 12px; color: #666; font-size: 14px;">※会社別集計を取得すると一覧が更新されます</span>
+          </div>
+          <table>
+            <thead>
+              <tr id="table-head-detail"></tr>
+            </thead>
+            <tbody id="table-body-detail"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-sql" class="page">
+        <h2>SQL情報</h2>
+        <div class="sql-card">
+          <div class="sql-toolbar">
+            <label for="sql-table-select">テーブル一覧：</label>
+            <select id="sql-table-select" onchange="onSqlTableChanged()">
+              <option value="">テーブルを選択してください</option>
+            </select>
+            <label for="sql-column-select">カラム一覧（複数選択可）：</label>
+            <select id="sql-column-select" multiple size="8" onchange="fetchSqlPreview()">
+              <option value="">カラムを選択してください</option>
+            </select>
+          </div>
+          <div id="sql-status" class="sql-status">テーブルを選択後、Ctrl/Shift で複数カラムを選択すると内容を最大50行表示します。</div>
+          <table>
+            <thead>
+              <tr id="sql-preview-head"></tr>
+            </thead>
+            <tbody id="sql-preview-body">
+              <tr><td>テーブルとカラムを選択してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const BASE_URL = "http://127.0.0.1:5001/work-postgres-test/us-central1/getData";
+
+    function switchMenu(name) {
+      const isSales = name === "sales";
+      document.getElementById("menu-sales").classList.toggle("active", isSales);
+      document.getElementById("menu-sql").classList.toggle("active", !isSales);
+      document.getElementById("page-sales").classList.toggle("active", isSales);
+      document.getElementById("page-sql").classList.toggle("active", !isSales);
+      if (!isSales) {
+        loadSqlTables();
+      }
+    }
+
+    function getActiveTab() {
+      return document.getElementById("tab-detail").classList.contains("active") ? "detail" : "summary";
+    }
+
+    function switchTab(name) {
+      const isSummary = name === "summary";
+      document.getElementById("tab-summary").classList.toggle("active", isSummary);
+      document.getElementById("tab-detail").classList.toggle("active", !isSummary);
+      document.getElementById("tab-summary").setAttribute("aria-selected", isSummary ? "true" : "false");
+      document.getElementById("tab-detail").setAttribute("aria-selected", !isSummary ? "true" : "false");
+      document.getElementById("panel-summary").classList.toggle("active", isSummary);
+      document.getElementById("panel-detail").classList.toggle("active", !isSummary);
+
+      if (!isSummary) {
+        refreshTknmOptionsFromSummaryIfPossible();
+      }
+    }
+
+    function populateTknmSelect(rows) {
+      const sel = document.getElementById("tknm-select");
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">選択してください</option>';
+      rows.forEach((row) => {
+        const name = row.tknm;
+        if (name == null || name === "") return;
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      const match = [...sel.options].some((o) => o.value === prev);
+      if (match) sel.value = prev;
+    }
+
+    async function refreshTknmOptionsFromSummaryIfPossible() {
+      const startDate = document.getElementById("start-date").value;
+      const endDate = document.getElementById("end-date").value;
+      if (!startDate || !endDate) return;
+      try {
+        const url = `${BASE_URL}?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data)) populateTknmSelect(data);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function formatNum(val) {
+      const n = Number(val);
+      return Number.isFinite(n) ? n.toLocaleString() : val;
+    }
+
+    async function loadSqlTables() {
+      const tableSel = document.getElementById("sql-table-select");
+      const colSel = document.getElementById("sql-column-select");
+      const status = document.getElementById("sql-status");
+      if (!tableSel || !colSel || !status) return;
+      if (tableSel.dataset.loaded === "true") return;
+
+      tableSel.innerHTML = '<option value="">読み込み中...</option>';
+      colSel.innerHTML = '<option value="">カラムを選択してください</option>';
+      status.textContent = "テーブル一覧を読み込み中...";
+      try {
+        const res = await fetch(`${BASE_URL}?view=sqlmeta`);
+        if (!res.ok) throw new Error("テーブル取得失敗");
+        const data = await res.json();
+        const tables = Array.isArray(data.tables) ? data.tables : [];
+        tableSel.innerHTML = '<option value="">テーブルを選択してください</option>';
+        tables.forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = t;
+          opt.textContent = t;
+          tableSel.appendChild(opt);
+        });
+        tableSel.dataset.loaded = "true";
+        status.textContent = "テーブルを選択してください。";
+      } catch (e) {
+        console.error(e);
+        tableSel.innerHTML = '<option value="">取得失敗</option>';
+        status.textContent = "テーブル一覧の取得に失敗しました。";
+      }
+    }
+
+    async function onSqlTableChanged() {
+      const tableSel = document.getElementById("sql-table-select");
+      const colSel = document.getElementById("sql-column-select");
+      const status = document.getElementById("sql-status");
+      const head = document.getElementById("sql-preview-head");
+      const body = document.getElementById("sql-preview-body");
+      if (!tableSel || !colSel || !status || !head || !body) return;
+
+      const tableName = tableSel.value;
+      colSel.innerHTML = "";
+      head.innerHTML = "";
+      body.innerHTML = "<tr><td>カラムを選択してください</td></tr>";
+      if (!tableName) {
+        status.textContent = "テーブルを選択してください。";
+        return;
+      }
+
+      status.textContent = `カラム一覧を読み込み中...（${tableName}）`;
+      try {
+        const url = `${BASE_URL}?view=sqlmeta&tableName=${encodeURIComponent(tableName)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("カラム取得失敗");
+        const data = await res.json();
+        const columns = Array.isArray(data.columns) ? data.columns : [];
+        colSel.innerHTML = "";
+        columns.forEach((c) => {
+          const opt = document.createElement("option");
+          opt.value = c;
+          opt.textContent = c;
+          colSel.appendChild(opt);
+        });
+        status.textContent = "カラムを選択してください。";
+      } catch (e) {
+        console.error(e);
+        status.textContent = "カラム一覧の取得に失敗しました。";
+      }
+    }
+
+    async function fetchSqlPreview() {
+      const tableSel = document.getElementById("sql-table-select");
+      const colSel = document.getElementById("sql-column-select");
+      const status = document.getElementById("sql-status");
+      const head = document.getElementById("sql-preview-head");
+      const body = document.getElementById("sql-preview-body");
+      if (!tableSel || !colSel || !status || !head || !body) return;
+
+      const tableName = tableSel.value;
+      const selectedColumns = [...colSel.selectedOptions].map((opt) => opt.value).filter((v) => v);
+      head.innerHTML = "";
+      if (!tableName || selectedColumns.length === 0) {
+        body.innerHTML = "<tr><td>テーブルとカラムを選択してください（複数選択可）</td></tr>";
+        return;
+      }
+
+      body.innerHTML = "<tr><td>読み込み中...</td></tr>";
+      status.textContent = `内容を取得中...（${tableName}.${selectedColumns.join(", ")}）`;
+      try {
+        const url = `${BASE_URL}?view=sqlpreview&tableName=${encodeURIComponent(tableName)}&columnNames=${encodeURIComponent(selectedColumns.join(","))}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("内容取得失敗");
+        const data = await res.json();
+        const columns = Array.isArray(data.columns) ? data.columns : selectedColumns;
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+
+        columns.forEach((columnName, index) => {
+          const th = document.createElement("th");
+          th.textContent = index === 0 ? `${columnName}（最大50行）` : columnName;
+          head.appendChild(th);
+        });
+
+        if (rows.length === 0) {
+          body.innerHTML = `<tr><td colspan='${columns.length}'>データがありません</td></tr>`;
+          status.textContent = "0行でした。";
+          return;
+        }
+
+        body.innerHTML = "";
+        rows.forEach((r) => {
+          const tr = document.createElement("tr");
+          columns.forEach((columnName) => {
+            const td = document.createElement("td");
+            const cellValue = r[columnName];
+            td.textContent = cellValue == null ? "" : String(cellValue);
+            tr.appendChild(td);
+          });
+          body.appendChild(tr);
+        });
+        status.textContent = `${rows.length}行を表示中（最大50行）。`;
+      } catch (e) {
+        console.error(e);
+        body.innerHTML = "<tr><td style='color:red;'>取得に失敗しました</td></tr>";
+        status.textContent = "内容の取得に失敗しました。";
+      }
+    }
+
+    async function fetchData() {
+      const grandTotalEl = document.getElementById("grand-total");
+      const grandTotalTyoha0El = document.getElementById("grand-total-tyoha0");
+      const startDate = document.getElementById("start-date").value;
+      const endDate = document.getElementById("end-date").value;
+
+      if (!startDate || !endDate) {
+        alert("開始日と終了日を両方入力してください！");
+        return;
+      }
+
+      const tab = getActiveTab();
+
+      const tbodySum = document.getElementById("table-body-summary");
+      const theadSum = document.getElementById("table-head-summary");
+      const tbodyDet = document.getElementById("table-body-detail");
+      const theadDet = document.getElementById("table-head-detail");
+
+      grandTotalEl.textContent = "計算中...";
+      grandTotalTyoha0El.textContent = "計算中...";
+
+      if (tab === "summary") {
+        theadSum.innerHTML = "";
+        tbodySum.innerHTML = "<tr><td colspan='2'>読み込み中...</td></tr>";
+      } else {
+        theadDet.innerHTML = "";
+        tbodyDet.innerHTML = "<tr><td colspan='5'>読み込み中...</td></tr>";
+      }
+
+      try {
+        if (tab === "summary") {
+          const functionUrl = `${BASE_URL}?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+          const response = await fetch(functionUrl);
+          if (!response.ok) throw new Error("ネットワークエラー");
+          const data = await response.json();
+
+          populateTknmSelect(data);
+
+          if (data.length === 0) {
+            tbodySum.innerHTML = "<tr><td colspan='2'>指定された期間のデータがありません</td></tr>";
+            grandTotalEl.textContent = "0";
+            grandTotalTyoha0El.textContent = "0";
+            return;
+          }
+
+          const displayColumns = [
+            { key: "tknm", label: "売上先会社名" },
+            { key: "total_kin", label: "合計金額" }
+          ];
+
+          displayColumns.forEach((col) => {
+            const th = document.createElement("th");
+            th.textContent = col.label;
+            theadSum.appendChild(th);
+          });
+
+          tbodySum.innerHTML = "";
+          data.forEach((row) => {
+            const tr = document.createElement("tr");
+            displayColumns.forEach((col) => {
+              const td = document.createElement("td");
+              td.textContent = col.key === "total_kin" ? formatNum(row[col.key]) : row[col.key];
+              tr.appendChild(td);
+            });
+            tbodySum.appendChild(tr);
+          });
+
+          const grandTotal = data.reduce((sum, row) => {
+            const n = Number(row.total_kin);
+            return Number.isFinite(n) ? sum + n : sum;
+          }, 0);
+          grandTotalEl.textContent = grandTotal.toLocaleString();
+
+          const grandTotalTyoha0 = data.reduce((sum, row) => {
+            const n = Number(row.total_kin_tyoha0);
+            return Number.isFinite(n) ? sum + n : sum;
+          }, 0);
+          grandTotalTyoha0El.textContent = grandTotalTyoha0.toLocaleString();
+        } else {
+          const tknm = document.getElementById("tknm-select").value;
+          if (!tknm) {
+            theadDet.innerHTML = "";
+            tbodyDet.innerHTML = "<tr><td colspan='5'>売上先会社名を選択してください</td></tr>";
+            grandTotalEl.textContent = "-";
+            grandTotalTyoha0El.textContent = "-";
+            alert("売上先会社名を選択してください");
+            return;
+          }
+
+          const functionUrl = `${BASE_URL}?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}&view=detail&tknm=${encodeURIComponent(tknm)}`;
+          const response = await fetch(functionUrl);
+          if (!response.ok) throw new Error("ネットワークエラー");
+          const data = await response.json();
+
+          const displayColumns = [
+            { key: "nohinymd", label: "売上年月日" },
+            { key: "hnnm", label: "商品名" },
+            { key: "su", label: "数量" },
+            { key: "jyu_tan", label: "単価" },
+            { key: "jyu_kin", label: "金額" }
+          ];
+
+          displayColumns.forEach((col) => {
+            const th = document.createElement("th");
+            th.textContent = col.label;
+            theadDet.appendChild(th);
+          });
+
+          if (data.length === 0) {
+            tbodyDet.innerHTML = "<tr><td colspan='5'>指定された条件のデータがありません</td></tr>";
+            grandTotalEl.textContent = "0";
+            grandTotalTyoha0El.textContent = "0";
+            return;
+          }
+
+          tbodyDet.innerHTML = "";
+          data.forEach((row) => {
+            const tr = document.createElement("tr");
+            displayColumns.forEach((col) => {
+              const td = document.createElement("td");
+              if (col.key === "su" || col.key === "jyu_tan" || col.key === "jyu_kin") {
+                td.textContent = formatNum(row[col.key]);
+              } else {
+                td.textContent = row[col.key];
+              }
+              tr.appendChild(td);
+            });
+            tbodyDet.appendChild(tr);
+          });
+
+          const grandTotal = data.reduce((sum, row) => {
+            const n = Number(row.jyu_kin);
+            return Number.isFinite(n) ? sum + n : sum;
+          }, 0);
+          grandTotalEl.textContent = grandTotal.toLocaleString();
+
+          const grandTotalTyoha0 = data.reduce((sum, row) => {
+            if (String(row.tyoha) !== "0") return sum;
+            const n = Number(row.jyu_kin);
+            return Number.isFinite(n) ? sum + n : sum;
+          }, 0);
+          grandTotalTyoha0El.textContent = grandTotalTyoha0.toLocaleString();
+        }
+      } catch (error) {
+        console.error(error);
+        const colspan = tab === "summary" ? "2" : "5";
+        const tbodyErr = tab === "summary" ? tbodySum : tbodyDet;
+        tbodyErr.innerHTML = `<tr><td colspan='${colspan}' style='color:red;'>エラーが発生しました。コンソールを確認してください。</td></tr>`;
+        grandTotalEl.textContent = "エラー";
+        grandTotalTyoha0El.textContent = "エラー";
+      }
+    }
+  </script></body>
+</html>
