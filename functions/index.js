@@ -11,6 +11,57 @@ const pool = new Pool({
     password: "CapyTqn8vC11" // パスワード
   });
 
+/**
+ * zaikom_d.nendo（集計年月）を uri_d.nohinymd / siire_d.sirymd と比較できる yyyy/mm/dd 形式の月初・月末へ変換する。
+ * 想定例: "2025/4", "2025/04", "202504", "2025-04"
+ */
+function parseNendoToMonthSlashRange(nendoRaw) {
+  const s = String(nendoRaw).trim().replace(/-/g, "/").replace(/\s+/g, "");
+  let y;
+  let monthNum;
+  const slash = s.match(/^(\d{4})\/(\d{1,2})(?:\/(\d{1,2}))?$/);
+  const six = s.match(/^(\d{4})(\d{2})$/);
+  if (slash) {
+    y = parseInt(slash[1], 10);
+    monthNum = parseInt(slash[2], 10);
+  } else if (six) {
+    y = parseInt(six[1], 10);
+    monthNum = parseInt(six[2], 10);
+  } else {
+    return null;
+  }
+  if (!Number.isFinite(y) || !Number.isFinite(monthNum) || monthNum < 1 || monthNum > 12) {
+    return null;
+  }
+  const p = (n) => String(n).padStart(2, "0");
+  const start = `${y}/${p(monthNum)}/01`;
+  const lastDay = new Date(y, monthNum, 0).getDate();
+  const end = `${y}/${p(monthNum)}/${p(lastDay)}`;
+  return { start, end };
+}
+
+/** 暦の前月に相当する zaikom_d.nendo の表記候補（DBの表記ゆれに対応） */
+function prevMonthNendoCandidates(nendoRaw) {
+  const range = parseNendoToMonthSlashRange(nendoRaw);
+  if (!range) return [];
+  const m = String(range.start).match(/^(\d{4})\/(\d{2})\/01$/);
+  if (!m) return [];
+  let y = parseInt(m[1], 10);
+  let mo = parseInt(m[2], 10);
+  mo -= 1;
+  if (mo < 1) {
+    mo = 12;
+    y -= 1;
+  }
+  const p = (n) => String(n).padStart(2, "0");
+  const candidates = new Set([
+    `${y}/${p(mo)}`,
+    `${y}/${mo}`,
+    `${y}${p(mo)}`
+  ]);
+  return Array.from(candidates);
+}
+
   exports.getData = functions.https.onRequest((req, res) => {
     cors(req, res, async () => {
       try {
@@ -235,6 +286,163 @@ const pool = new Pool({
           });
         }
 
+        if (view === "getsukireport") {
+          const nendo = req.query.nendo;
+          if (nendo == null || String(nendo).trim() === "") {
+            return res.status(400).send("集計年月を指定してください");
+          }
+          const v = String(nendo).trim();
+
+          const listResult = await pool.query(`
+            SELECT DISTINCT a.nendo
+            FROM zaikom_d AS a
+            WHERE a.nendo IS NOT NULL;
+          `);
+          const allowed = new Set(listResult.rows.map((row) => String(row.nendo).trim()));
+          if (!allowed.has(v)) {
+            return res.status(400).send("指定された集計年月が zaikom_d に存在しません");
+          }
+
+          const range = parseNendoToMonthSlashRange(v);
+          if (!range) {
+            return res.status(400).send("集計年月の形式を解釈できません（例: 2025/04 または 202504）");
+          }
+          const { start: ymdStart, end: ymdEnd } = range;
+
+          const uriResult = await pool.query(
+            `
+              SELECT
+                SUM(
+                  CASE
+                    WHEN b.hncd ~ '^[0-9]+$' AND b.hncd::integer BETWEEN 100 AND 199
+                    THEN COALESCE(b.nohin_kin, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS lz_kin,
+                SUM(
+                  CASE
+                    WHEN b.hncd ~ '^[0-9]+$' AND b.hncd::integer BETWEEN 200 AND 299
+                    THEN COALESCE(b.nohin_kin, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS pz_kin,
+                SUM(
+                  CASE
+                    WHEN b.hncd ~ '^[0-9]+$' AND b.hncd::integer BETWEEN 400 AND 499
+                    THEN COALESCE(b.nohin_kin, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS gaityu_kin,
+                SUM(
+                  CASE
+                    WHEN b.hncd ~ '^[0-9]+$' AND b.hncd::integer BETWEEN 500 AND 600
+                    THEN COALESCE(b.nohin_kin, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS hoka_kin,
+                SUM(
+                  CASE
+                    WHEN b.hncd ~ '^[0-9]+$' AND b.hncd::integer BETWEEN 300 AND 398
+                    THEN COALESCE(b.nohin_kin, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS tyukai_kin,
+                SUM(
+                  CASE
+                    WHEN b.hncd ~ '^[0-9]+$' AND b.hncd::integer = 399
+                    THEN COALESCE(b.nohin_kin, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS zaiko_kin,
+                SUM(COALESCE(b.nohin_kin, 0)::numeric) AS total_kin
+              FROM uri_d AS b
+              WHERE TRIM(BOTH FROM COALESCE(b.nohinymd::text, '')) <> ''
+                AND REPLACE(TRIM(BOTH FROM b.nohinymd::text), '-', '/') >= $1
+                AND REPLACE(TRIM(BOTH FROM b.nohinymd::text), '-', '/') <= $2;
+            `,
+            [ymdStart, ymdEnd]
+          );
+          const siireResult = await pool.query(
+            `
+              SELECT
+                SUM(
+                  CASE
+                    WHEN TRIM(BOTH FROM COALESCE(c.jisyakbn::text, '')) = '0'
+                     AND TRIM(BOTH FROM COALESCE(c.zaishitu::text, '')) <> '97'
+                    THEN COALESCE(c.skingu, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS siire_kin,
+                SUM(
+                  CASE
+                    WHEN TRIM(BOTH FROM COALESCE(c.jisyakbn::text, '')) = '1'
+                    THEN COALESCE(c.skingu, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS gaityu_kin,
+                SUM(
+                  CASE
+                    WHEN TRIM(BOTH FROM COALESCE(c.zaishitu::text, '')) = '97'
+                    THEN COALESCE(c.skingu, 0)::numeric
+                    ELSE 0
+                  END
+                ) AS chukai_zai,
+                SUM(COALESCE(c.skingu, 0)::numeric) AS total_kin
+              FROM siire_d AS c
+              WHERE TRIM(BOTH FROM COALESCE(c.sirymd::text, '')) <> ''
+                AND REPLACE(TRIM(BOTH FROM c.sirymd::text), '-', '/') >= $1
+                AND REPLACE(TRIM(BOTH FROM c.sirymd::text), '-', '/') <= $2;
+            `,
+            [ymdStart, ymdEnd]
+          );
+          const zaikResult = await pool.query(
+            `
+              SELECT COALESCE(ROUND(SUM(a.zaikin::numeric)), 0)::bigint AS zaikin_sum
+              FROM zaikom_d AS a
+              WHERE TRIM(BOTH FROM a.nendo::text) = TRIM(BOTH FROM $1::text);
+            `,
+            [v]
+          );
+          const prevCands = prevMonthNendoCandidates(v);
+          let zaikinSumPrev = 0;
+          if (prevCands.length > 0) {
+            const zaikPrevResult = await pool.query(
+              `
+                SELECT COALESCE(ROUND(SUM(a.zaikin::numeric)), 0)::bigint AS zaikin_sum_prev
+                FROM zaikom_d AS a
+                WHERE TRIM(BOTH FROM a.nendo::text) = ANY($1::text[]);
+              `,
+              [prevCands]
+            );
+            const zpr = zaikPrevResult.rows[0] || {};
+            zaikinSumPrev = zpr.zaikin_sum_prev != null ? Number(zpr.zaikin_sum_prev) : 0;
+          }
+          const uriRow = uriResult.rows[0] || {};
+          const siireRow = siireResult.rows[0] || {};
+          const zaikRow = zaikResult.rows[0] || {};
+          const zaikinCur = zaikRow.zaikin_sum != null ? Number(zaikRow.zaikin_sum) : 0;
+          const zaikinDiff = zaikinCur - zaikinSumPrev;
+          return res.status(200).json({
+            nendo: v,
+            monthStartYmd: ymdStart,
+            monthEndYmd: ymdEnd,
+            lzKin: uriRow.lz_kin,
+            pzKin: uriRow.pz_kin,
+            gaityuKin: uriRow.gaityu_kin,
+            hokaKin: uriRow.hoka_kin,
+            tyukaiKin: uriRow.tyukai_kin,
+            zaikoKin: uriRow.zaiko_kin,
+            uriTotalKin: uriRow.total_kin,
+            siireSiireKin: siireRow.siire_kin,
+            siireGaityuKin: siireRow.gaityu_kin,
+            siireChukaiZai: siireRow.chukai_zai,
+            siireTotalKin: siireRow.total_kin,
+            zaikinSum: zaikinCur,
+            zaikinSumPrev: zaikinSumPrev,
+            zaikinDiff: zaikinDiff
+          });
+        }
+
         if (!startDate || !endDate) {
           return res.status(400).send("日付が指定されていません");
         }
@@ -311,7 +519,7 @@ const pool = new Pool({
             SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 400 AND 499 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS gaityu_kin,
             SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 300 AND 398 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS tyukai_kin,
             SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer = 399 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS zaiko_kin,
-            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 500 AND 599 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS hoka_kin,
+            SUM(CASE WHEN hncd ~ '^[0-9]+$' AND hncd::integer BETWEEN 500 AND 600 THEN COALESCE(nohin_kin, 0)::numeric ELSE 0 END) AS hoka_kin,
             SUM(COALESCE(nohin_kin, 0)::numeric) AS total_kin,
             SUM(CASE WHEN tyoha = '0' THEN jyu_kin::numeric ELSE 0 END) AS total_kin_tyoha0
           FROM uri_d

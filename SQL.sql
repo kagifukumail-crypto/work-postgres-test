@@ -133,6 +133,7 @@ CREATE TABLE uri_d (
     nebiki_ritu DOUBLE PRECISION, -- 値引き率 (５％値引き対応)
     nohin_tan DOUBLE PRECISION, -- 納品書単価 (５％値引き対応)
     nohin_kin DOUBLE PRECISION, -- 納品書金額 (５％値引き対応)
+    gokei DOUBLE PRECISION, -- 総売上額（実DBに準拠。月次レポート集計に使用）
     genka DOUBLE PRECISION, -- 原価合計
     arari DOUBLE PRECISION, -- 粗利
     tekiyocd VARCHAR(3), -- 摘要ｺｰﾄﾞ

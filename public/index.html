@@ -139,6 +139,133 @@
       margin-top: 10px;
       letter-spacing: 0.02em;
     }
+    #page-tsuki h2 {
+      font-size: 1.45rem;
+    }
+    .tsuki-toolbar {
+      margin-bottom: 14px;
+      background: #fff;
+      padding: 14px 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      align-items: center;
+    }
+    .tsuki-toolbar label {
+      font-size: 16px;
+    }
+    .tsuki-toolbar select {
+      min-width: 260px;
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    .tsuki-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(320px, 1fr));
+      gap: 12px;
+      align-items: start;
+      font-size: 16px;
+    }
+    .tsuki-grid .tana-highlight-box {
+      max-width: none !important;
+      padding: 16px 16px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      text-align: left;
+      min-width: 0;
+    }
+    .tsuki-grid .tsuki-summary-box {
+      grid-column: 1 / -1;
+      padding: 18px 18px;
+    }
+    .tsuki-grid .tana-highlight-box .tana-amount {
+      font-size: inherit;
+      font-weight: bold;
+      margin-top: 0;
+    }
+    .tsuki-grid .tsuki-metric-list {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px 16px;
+      font-size: 16px;
+      align-items: baseline;
+      max-width: 100%;
+    }
+    .tsuki-grid .tsuki-metric-list span {
+      font-weight: bold;
+      text-align: right;
+    }
+    .tsuki-grid .tsuki-title {
+      font-size: 18px;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+    .tsuki-grid .tsuki-summary-box .tsuki-title {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+    .tsuki-grid .tsuki-summary-box .tsuki-metric-list {
+      font-size: 18px;
+      gap: 10px 18px;
+    }
+    .tsuki-grid .tsuki-summary-box .tsuki-metric-list span {
+      font-size: 1.08em;
+    }
+    .tsuki-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      grid-column: 1 / -1;
+      align-items: start;
+    }
+    .tsuki-stack {
+      display: grid;
+      gap: 10px;
+    }
+    @media (max-width: 1200px) {
+      .tsuki-grid { grid-template-columns: 1fr; }
+      .tsuki-grid .tsuki-summary-box { grid-column: auto; }
+      .tsuki-columns { grid-template-columns: 1fr; }
+    }
+    @page {
+      size: A4 portrait;
+      margin: 10mm;
+    }
+    @media print {
+      body { background: #fff; }
+      .sidebar, .tabs, .tab-panel, #page-sales, #page-purchase, #page-tana, #page-zaiko, #page-sql { display: none !important; }
+      .layout, .main-content { display: block; padding: 0; margin: 0; }
+      #page-tsuki { display: block !important; }
+      .tsuki-toolbar .btn { display: none !important; }
+      .tsuki-toolbar {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        margin-bottom: 8px;
+      }
+      .tsuki-grid {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .tsuki-columns {
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .tsuki-stack { gap: 8px; }
+      .tsuki-grid .tana-highlight-box {
+        box-shadow: none;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      .tsuki-grid .tsuki-title { font-size: 14px; margin-bottom: 6px; }
+      .tsuki-grid .tsuki-summary-box .tsuki-title { font-size: 17px; }
+      .tsuki-grid .tsuki-metric-list { font-size: 12px; gap: 4px 10px; }
+      .tsuki-grid .tsuki-summary-box .tsuki-metric-list { font-size: 13px; }
+      .tsuki-grid .tana-highlight-box .tana-amount { font-size: inherit; }
+    }
   </style>
 </head>
 <body>
@@ -149,6 +276,7 @@
       <button type="button" id="menu-purchase" class="menu-btn" onclick="switchMenu('purchase')">仕入データ</button>
       <button type="button" id="menu-tana" class="menu-btn" onclick="switchMenu('tana')">棚卸データ</button>
       <button type="button" id="menu-zaiko" class="menu-btn" onclick="switchMenu('zaiko')">在庫データ</button>
+      <button type="button" id="menu-tsuki" class="menu-btn" onclick="switchMenu('tsuki')">月次レポート</button>
       <button type="button" id="menu-sql" class="menu-btn" onclick="switchMenu('sql')">SQL情報</button>
     </aside>
 
@@ -325,6 +453,82 @@
         </div>
       </section>
 
+      <section id="page-tsuki" class="page">
+        <h2>月次レポート</h2>
+        <div class="tsuki-toolbar">
+          <label style="font-weight: bold;">期間指定(集計年月)</label>
+          <select id="tsuki-nendo-select">
+            <option value="">選択してください</option>
+          </select>
+          <button class="btn" type="button" onclick="fetchTsukiReport()">表示</button>
+          <button class="btn" type="button" onclick="printTsukiReport()" style="background-color:#4b5563;">印刷</button>
+        </div>
+        <div class="tsuki-grid">
+          <div class="tana-highlight-box tsuki-summary-box" style="background: linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #2563eb;">
+            <div class="tsuki-title" style="color: #1d4ed8;">月次サマリー</div>
+            <div class="tsuki-metric-list">
+              <strong>自社総売上</strong><span id="tsuki-sum-uri" style="font-weight: bold; text-align: right;">-</span>
+              <strong>自社総仕入</strong><span id="tsuki-sum-siire" style="font-weight: bold; text-align: right;">-</span>
+              <strong>自社粗利益</strong><span id="tsuki-sum-arari" style="font-weight: bold; text-align: right;">-</span>
+              <strong>自社粗利率</strong><span id="tsuki-sum-rate" style="font-weight: bold; text-align: right;">-</span>
+            </div>
+          </div>
+          <div class="tsuki-columns">
+            <div class="tsuki-stack">
+              <div class="tana-highlight-box" style="background: linear-gradient(160deg, #fff7ed 0%, #ffedd5 100%); border: 2px solid #ea580c;">
+                <div class="tsuki-title" style="color: #9a3412;">売上データ</div>
+                <div class="tsuki-metric-list">
+                  <strong>LZ売上</strong><span id="tsuki-uri-lz" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>PZ売上</strong><span id="tsuki-uri-pz" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>他の売上</strong><span id="tsuki-uri-hoka" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>外注売上</strong><span id="tsuki-uri-gaityu" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>仲介売上</strong><span id="tsuki-uri-tyukai" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>在庫売上</strong><span id="tsuki-uri-zaiko" style="font-weight: bold; text-align: right;">-</span>
+                  <strong style="border-top: 1px solid #fdba74; padding-top: 8px; margin-top: 4px;">合計金額</strong><span id="tsuki-uri-total" style="font-weight: bold; text-align: right; border-top: 1px solid #fdba74; padding-top: 8px; margin-top: 4px;">-</span>
+                </div>
+              </div>
+              <div class="tana-highlight-box" style="background: linear-gradient(160deg, #ecfeff 0%, #cffafe 100%); border: 2px solid #0891b2;">
+                <div class="tsuki-title" style="color: #0e7490;">粗利益データ</div>
+                <div class="tsuki-metric-list">
+                  <strong>自社売上合計</strong><span id="tsuki-arari-jisha-uri" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>自社使用在庫</strong><span id="tsuki-arari-jisha-zai" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>粗利益額</strong><span id="tsuki-arari-kin" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>粗利益率</strong><span id="tsuki-arari-rate" style="font-weight: bold; text-align: right;">-</span>
+                </div>
+              </div>
+              <div class="tana-highlight-box" style="background: linear-gradient(160deg, #fefce8 0%, #fef9c3 100%); border: 2px solid #ca8a04;">
+                <div class="tsuki-title" style="color: #854d0e;">粗利益データ(PZ)</div>
+                <div class="tsuki-metric-list">
+                  <strong>外注売上合計</strong><span id="tsuki-arari-pz-uri" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>外注仕入合計</strong><span id="tsuki-arari-pz-si" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>粗利益額</strong><span id="tsuki-arari-pz-kin" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>粗利益率</strong><span id="tsuki-arari-pz-rate" style="font-weight: bold; text-align: right;">-</span>
+                </div>
+              </div>
+            </div>
+            <div class="tsuki-stack">
+              <div class="tana-highlight-box" style="background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #16a34a;">
+                <div class="tsuki-title" style="color: #14532d;">仕入れデータ</div>
+                <div class="tsuki-metric-list">
+                  <strong>仕入額</strong><span id="tsuki-si-siire" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>外注</strong><span id="tsuki-si-gaityu" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>仲介材</strong><span id="tsuki-si-chukai" style="font-weight: bold; text-align: right;">-</span>
+                  <strong style="border-top: 1px solid #86efac; padding-top: 8px; margin-top: 4px;">合計金額</strong><span id="tsuki-si-total" style="font-weight: bold; text-align: right; border-top: 1px solid #86efac; padding-top: 8px; margin-top: 4px;">-</span>
+                </div>
+              </div>
+              <div class="tana-highlight-box" style="background: linear-gradient(160deg, #faf5ff 0%, #e9d5ff 100%); border: 2px solid #7c3aed;">
+                <div class="tsuki-title" style="color: #5b21b6;">在庫データ（整数表示）</div>
+                <div class="tsuki-metric-list">
+                  <strong>当月総在庫額</strong><span id="tsuki-zaiko-zaikin" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>前月総在庫額</strong><span id="tsuki-zaiko-prev" style="font-weight: bold; text-align: right;">-</span>
+                  <strong>前月からの増減額</strong><span id="tsuki-zaiko-diff" style="font-weight: bold; text-align: right;">-</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="page-sql" class="page">
         <h2>SQL情報</h2>
         <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -374,11 +578,13 @@
       document.getElementById("menu-purchase").classList.toggle("active", name === "purchase");
       document.getElementById("menu-tana").classList.toggle("active", name === "tana");
       document.getElementById("menu-zaiko").classList.toggle("active", name === "zaiko");
+      document.getElementById("menu-tsuki").classList.toggle("active", name === "tsuki");
       document.getElementById("menu-sql").classList.toggle("active", name === "sql");
       document.getElementById("page-sales").classList.toggle("active", name === "sales");
       document.getElementById("page-purchase").classList.toggle("active", name === "purchase");
       document.getElementById("page-tana").classList.toggle("active", name === "tana");
       document.getElementById("page-zaiko").classList.toggle("active", name === "zaiko");
+      document.getElementById("page-tsuki").classList.toggle("active", name === "tsuki");
       document.getElementById("page-sql").classList.toggle("active", name === "sql");
       if (name === "sql") {
         loadSqlTables();
@@ -389,6 +595,240 @@
       }
       if (name === "zaiko") {
         loadZaikoNendoOptions();
+      }
+      if (name === "tsuki") {
+        loadTsukiNendoOptions();
+      }
+    }
+
+    async function loadTsukiNendoOptions() {
+      const sel = document.getElementById("tsuki-nendo-select");
+      if (!sel) return;
+      const prev = sel.value;
+      try {
+        const res = await fetch(`${BASE_URL}?view=zaikommeta`);
+        if (!res.ok) throw new Error("一覧の取得に失敗");
+        const data = await res.json();
+        const list = Array.isArray(data.nendoList) ? data.nendoList : [];
+        sel.innerHTML = '<option value="">選択してください</option>';
+        list.forEach((n) => {
+          const v = String(n);
+          const o = document.createElement("option");
+          o.value = v;
+          o.textContent = v;
+          sel.appendChild(o);
+        });
+        if (list.some((n) => String(n) === prev)) sel.value = prev;
+      } catch (e) {
+        console.error(e);
+        alert("集計年月一覧の取得に失敗しました。テーブル zaikom_d や権限を確認してください。");
+      }
+    }
+
+    function formatTsukiMoney(val) {
+      const n = Number(val);
+      return Number.isFinite(n) ? n.toLocaleString() : String(val ?? "-");
+    }
+
+    function formatTsukiInteger(val) {
+      const n = Math.round(Number(val));
+      if (!Number.isFinite(n)) return String(val ?? "-");
+      return n.toLocaleString();
+    }
+
+    function formatTsukiIntegerSigned(val) {
+      const n = Math.round(Number(val));
+      if (!Number.isFinite(n)) return String(val ?? "-");
+      const s = n.toLocaleString();
+      if (n > 0) return "+" + s;
+      return s;
+    }
+
+    function applyTsukiArariFromData(data) {
+      const lz = Number(data.lzKin);
+      const pz = Number(data.pzKin);
+      const hoka = Number(data.hokaKin);
+      const siire = Number(data.siireSiireKin);
+      const zdiff = Number(data.zaikinDiff);
+      const jishaUri =
+        (Number.isFinite(lz) ? lz : 0) +
+        (Number.isFinite(pz) ? pz : 0) +
+        (Number.isFinite(hoka) ? hoka : 0);
+      const jishaZai = (Number.isFinite(siire) ? siire : 0) - (Number.isFinite(zdiff) ? zdiff : 0);
+      const arariKin = jishaUri - jishaZai;
+      const setText = (id, t) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = t;
+      };
+      setText("tsuki-arari-jisha-uri", formatTsukiInteger(jishaUri));
+      setText("tsuki-arari-jisha-zai", formatTsukiInteger(jishaZai));
+      setText("tsuki-arari-kin", formatTsukiInteger(arariKin));
+      let rateStr = "—";
+      if (Number.isFinite(jishaUri) && jishaUri !== 0) {
+        const ratio = 1 - jishaZai / jishaUri;
+        rateStr = (ratio * 100).toFixed(1) + "%";
+      } else if (jishaUri === 0 && jishaZai === 0) {
+        rateStr = "0.0%";
+      }
+      setText("tsuki-arari-rate", rateStr);
+    }
+
+    function applyTsukiArariPzFromData(data) {
+      const gaityuUri = Number(data.gaityuKin);
+      const gaityuSi = Number(data.siireGaityuKin);
+      const uriSum = Number.isFinite(gaityuUri) ? gaityuUri : 0;
+      const siSum = Number.isFinite(gaityuSi) ? gaityuSi : 0;
+      const arariKin = uriSum - siSum;
+      const setText = (id, t) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = t;
+      };
+      setText("tsuki-arari-pz-uri", formatTsukiInteger(uriSum));
+      setText("tsuki-arari-pz-si", formatTsukiInteger(siSum));
+      setText("tsuki-arari-pz-kin", formatTsukiInteger(arariKin));
+      let rateStr = "—";
+      if (Number.isFinite(uriSum) && uriSum !== 0) {
+        const ratio = 1 - siSum / uriSum;
+        rateStr = (ratio * 100).toFixed(1) + "%";
+      } else if (uriSum === 0 && siSum === 0) {
+        rateStr = "0.0%";
+      }
+      setText("tsuki-arari-pz-rate", rateStr);
+    }
+
+    function applyTsukiMonthlySummaryFromData(data) {
+      const lz = Number(data.lzKin);
+      const pz = Number(data.pzKin);
+      const hoka = Number(data.hokaKin);
+      const gaityuUri = Number(data.gaityuKin);
+      const siire = Number(data.siireSiireKin);
+      const zdiff = Number(data.zaikinDiff);
+      const gaityuSi = Number(data.siireGaityuKin);
+
+      const jishaUri =
+        (Number.isFinite(lz) ? lz : 0) +
+        (Number.isFinite(pz) ? pz : 0) +
+        (Number.isFinite(hoka) ? hoka : 0);
+      const jishaZai = (Number.isFinite(siire) ? siire : 0) - (Number.isFinite(zdiff) ? zdiff : 0);
+      const gaityuUriSum = Number.isFinite(gaityuUri) ? gaityuUri : 0;
+      const gaityuSiSum = Number.isFinite(gaityuSi) ? gaityuSi : 0;
+
+      const sumUri = jishaUri + gaityuUriSum;
+      const sumSiire = jishaZai + gaityuSiSum;
+      const sumArari = sumUri - sumSiire;
+
+      const setText = (id, t) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = t;
+      };
+      setText("tsuki-sum-uri", formatTsukiInteger(sumUri));
+      setText("tsuki-sum-siire", formatTsukiInteger(sumSiire));
+      setText("tsuki-sum-arari", formatTsukiInteger(sumArari));
+
+      let rateStr = "—";
+      if (Number.isFinite(sumUri) && sumUri !== 0) {
+        const ratio = sumArari / sumUri;
+        rateStr = (ratio * 100).toFixed(1) + "%";
+      } else if (sumUri === 0 && sumSiire === 0) {
+        rateStr = "0.0%";
+      }
+      setText("tsuki-sum-rate", rateStr);
+    }
+
+    function printTsukiReport() {
+      window.print();
+    }
+
+    async function fetchTsukiReport() {
+      const sel = document.getElementById("tsuki-nendo-select");
+      const uriIds = ["tsuki-uri-lz", "tsuki-uri-pz", "tsuki-uri-gaityu", "tsuki-uri-hoka", "tsuki-uri-tyukai", "tsuki-uri-zaiko", "tsuki-uri-total"];
+      const siIds = ["tsuki-si-siire", "tsuki-si-gaityu", "tsuki-si-chukai", "tsuki-si-total"];
+      const arariIds = ["tsuki-arari-jisha-uri", "tsuki-arari-jisha-zai", "tsuki-arari-kin", "tsuki-arari-rate"];
+      const arariPzIds = ["tsuki-arari-pz-uri", "tsuki-arari-pz-si", "tsuki-arari-pz-kin", "tsuki-arari-pz-rate"];
+      const summaryIds = ["tsuki-sum-uri", "tsuki-sum-siire", "tsuki-sum-arari", "tsuki-sum-rate"];
+      const zkEl = document.getElementById("tsuki-zaiko-zaikin");
+      const zkPrevEl = document.getElementById("tsuki-zaiko-prev");
+      const zkDiffEl = document.getElementById("tsuki-zaiko-diff");
+      if (!sel || !zkEl || !zkPrevEl || !zkDiffEl) return;
+      const n = sel.value;
+      if (!n) {
+        alert("集計年月を選択してください。");
+        return;
+      }
+      uriIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "読み込み中...";
+      });
+      siIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "読み込み中...";
+      });
+      arariIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "読み込み中...";
+      });
+      arariPzIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "読み込み中...";
+      });
+      summaryIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = "読み込み中...";
+      });
+      zkEl.textContent = "読み込み中...";
+      zkPrevEl.textContent = "読み込み中...";
+      zkDiffEl.textContent = "読み込み中...";
+      try {
+        const url = `${BASE_URL}?view=getsukireport&nendo=${encodeURIComponent(n)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("取得失敗");
+        const data = await res.json();
+        const setVal = (id, key) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = formatTsukiMoney(data[key]);
+        };
+        setVal("tsuki-uri-lz", "lzKin");
+        setVal("tsuki-uri-pz", "pzKin");
+        setVal("tsuki-uri-gaityu", "gaityuKin");
+        setVal("tsuki-uri-hoka", "hokaKin");
+        setVal("tsuki-uri-tyukai", "tyukaiKin");
+        setVal("tsuki-uri-zaiko", "zaikoKin");
+        setVal("tsuki-uri-total", "uriTotalKin");
+        setVal("tsuki-si-siire", "siireSiireKin");
+        setVal("tsuki-si-gaityu", "siireGaityuKin");
+        setVal("tsuki-si-chukai", "siireChukaiZai");
+        setVal("tsuki-si-total", "siireTotalKin");
+        zkEl.textContent = formatTsukiInteger(data.zaikinSum);
+        zkPrevEl.textContent = formatTsukiInteger(data.zaikinSumPrev);
+        zkDiffEl.textContent = formatTsukiIntegerSigned(data.zaikinDiff);
+        applyTsukiArariFromData(data);
+        applyTsukiArariPzFromData(data);
+        applyTsukiMonthlySummaryFromData(data);
+      } catch (e) {
+        console.error(e);
+        uriIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "エラー";
+        });
+        siIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "エラー";
+        });
+        zkEl.textContent = "エラー";
+        zkPrevEl.textContent = "エラー";
+        zkDiffEl.textContent = "エラー";
+        arariIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "エラー";
+        });
+        arariPzIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "エラー";
+        });
+        summaryIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = "エラー";
+        });
       }
     }
 
