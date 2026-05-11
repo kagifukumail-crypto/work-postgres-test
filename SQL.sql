@@ -159,6 +159,7 @@ CREATE TABLE siire_d (
     smotonm VARCHAR(200), -- 出荷元名
     sitan VARCHAR(40), -- 発注担当者
     torikbn VARCHAR(2), -- 取引区分
+    jisyakbn VARCHAR(2), -- 自社区分（0 など／実DBに準拠）
     zaishitu VARCHAR(10), -- 材質
     zaishitunm VARCHAR(20), -- 材質名
     kikaku VARCHAR(20), -- 規格
@@ -209,4 +210,22 @@ CREATE TABLE hatty_d (
     nyukbn VARCHAR(1), -- 入荷票印字区分
     zaikbn VARCHAR(5), -- 在庫区分 (0:未入荷)
     PRIMARY KEY (hatno, gyo)
+);
+
+-- ==========================================
+-- テーブル名: tana_d (棚卸データ) ※実DBに準拠
+-- ==========================================
+CREATE TABLE tana_d (
+    nendo VARCHAR(20), -- 年度
+    zaikin DOUBLE PRECISION -- 在庫額
+    -- その他の列・主キーは実テーブル定義に準拠
+);
+
+-- ==========================================
+-- テーブル名: zaikom_d (在庫データ・月次) ※実DBに準拠
+-- ==========================================
+CREATE TABLE zaikom_d (
+    nendo VARCHAR(20), -- 集計年度
+    zaikin DOUBLE PRECISION -- 在庫額（月次在庫額の集計元）
+    -- その他の列・主キーは実テーブル定義に準拠
 );

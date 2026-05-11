@@ -93,13 +93,146 @@ const pool = new Pool({
           }
 
           const selectColumns = columnNames.map((name) => `"${name}"`).join(", ");
-          const queryText = `
+
+          const filterStart = req.query.startDate;
+          const filterEnd = req.query.endDate;
+          const dateColumn = String(req.query.dateColumn || "").trim();
+
+          let queryText = `
             SELECT ${selectColumns}
             FROM "${tableName}"
+          `;
+          const queryValues = [];
+
+          if (filterStart && filterEnd) {
+            if (!dateColumn || !identPattern.test(dateColumn)) {
+              return res.status(400).send("期間指定には dateColumn を指定してください");
+            }
+            const dcCheck = await pool.query(
+              `
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = $1
+                  AND column_name = $2
+                LIMIT 1;
+              `,
+              [tableName, dateColumn]
+            );
+            if (dcCheck.rows.length === 0) {
+              return res.status(400).send("期間で絞るカラムがテーブルに存在しません");
+            }
+            const formattedStart = String(filterStart).replace(/-/g, "/");
+            const formattedEnd = String(filterEnd).replace(/-/g, "/");
+            queryText += ` WHERE "${dateColumn}" >= $1 AND "${dateColumn}" <= $2`;
+            queryValues.push(formattedStart, formattedEnd);
+          }
+
+          queryText += `
             LIMIT 50;
           `;
-          const result = await pool.query(queryText);
+          const result = await pool.query(queryText, queryValues);
           return res.status(200).json({ columns: columnNames, rows: result.rows });
+        }
+
+        if (view === "tanameta") {
+          const listResult = await pool.query(`
+            SELECT DISTINCT a.nendo
+            FROM tana_d AS a
+            WHERE a.nendo IS NOT NULL
+            ORDER BY a.nendo DESC;
+          `);
+          const nendoList = listResult.rows
+            .map((row) => String(row.nendo).trim())
+            .filter((n) => n !== "");
+          return res.status(200).json({ nendoList });
+        }
+
+        if (view === "tanasummary") {
+          const nendo1 = req.query.nendo1;
+          const nendo2 = req.query.nendo2;
+          if (nendo1 == null || nendo2 == null || String(nendo1).trim() === "" || String(nendo2).trim() === "") {
+            return res.status(400).send("比較1・比較2の年度を指定してください");
+          }
+          const v1 = String(nendo1).trim();
+          const v2 = String(nendo2).trim();
+
+          const listResult = await pool.query(`
+            SELECT DISTINCT a.nendo
+            FROM tana_d AS a
+            WHERE a.nendo IS NOT NULL;
+          `);
+          const allowed = new Set(listResult.rows.map((row) => String(row.nendo).trim()));
+          if (!allowed.has(v1) || !allowed.has(v2)) {
+            return res.status(400).send("指定された年度が棚卸データに存在しません");
+          }
+
+          const sumSql = `
+            SELECT
+              (
+                SELECT COALESCE(SUM(a.zaikin::numeric), 0)
+                FROM tana_d AS a
+                WHERE TRIM(BOTH FROM a.nendo::text) = TRIM(BOTH FROM $1::text)
+              ) AS past_zaikin,
+              (
+                SELECT COALESCE(SUM(a.zaikin::numeric), 0)
+                FROM tana_d AS a
+                WHERE TRIM(BOTH FROM a.nendo::text) = TRIM(BOTH FROM $2::text)
+              ) AS recent_zaikin;
+          `;
+          const sumResult = await pool.query(sumSql, [v1, v2]);
+          const row = sumResult.rows[0] || {};
+          return res.status(200).json({
+            pastZaikin: row.past_zaikin,
+            recentZaikin: row.recent_zaikin,
+            nendo1: v1,
+            nendo2: v2
+          });
+        }
+
+        if (view === "zaikommeta") {
+          const listResult = await pool.query(`
+            SELECT DISTINCT a.nendo
+            FROM zaikom_d AS a
+            WHERE a.nendo IS NOT NULL
+            ORDER BY a.nendo DESC;
+          `);
+          const nendoList = listResult.rows
+            .map((row) => String(row.nendo).trim())
+            .filter((n) => n !== "");
+          return res.status(200).json({ nendoList });
+        }
+
+        if (view === "zaikomsummary") {
+          const nendo = req.query.nendo;
+          if (nendo == null || String(nendo).trim() === "") {
+            return res.status(400).send("集計年度を指定してください");
+          }
+          const v = String(nendo).trim();
+
+          const listResult = await pool.query(`
+            SELECT DISTINCT a.nendo
+            FROM zaikom_d AS a
+            WHERE a.nendo IS NOT NULL;
+          `);
+          const allowed = new Set(listResult.rows.map((row) => String(row.nendo).trim()));
+          if (!allowed.has(v)) {
+            return res.status(400).send("指定された年度が在庫データに存在しません");
+          }
+
+          const sumResult = await pool.query(
+            `
+              SELECT COALESCE(SUM(a.zaikin::numeric), 0) AS monthly_zaikin
+              FROM zaikom_d AS a
+              WHERE TRIM(BOTH FROM a.nendo::text) = TRIM(BOTH FROM $1::text);
+            `,
+            [v]
+          );
+          const row = sumResult.rows[0] || {};
+          return res.status(200).json({
+            monthlyZaikin: row.monthly_zaikin,
+            nendo: v
+          });
         }
 
         if (!startDate || !endDate) {
@@ -108,6 +241,43 @@ const pool = new Pool({
 
         formattedStartDate = startDate.replace(/-/g, '/');
         formattedEndDate = endDate.replace(/-/g, '/');
+
+        if (view === "purchasesummary") {
+          const queryText = `
+            SELECT
+              a.siryaku AS siryaku,
+              SUM(
+                CASE
+                  WHEN TRIM(BOTH FROM COALESCE(a.jisyakbn::text, '')) = '0'
+                   AND TRIM(BOTH FROM COALESCE(a.zaishitu::text, '')) <> '97'
+                  THEN COALESCE(a.skingu, 0)::numeric
+                  ELSE 0
+                END
+              ) AS siire_kin,
+              SUM(
+                CASE
+                  WHEN TRIM(BOTH FROM COALESCE(a.zaishitu::text, '')) = '97'
+                  THEN COALESCE(a.skingu, 0)::numeric
+                  ELSE 0
+                END
+              ) AS chukai_zai,
+              SUM(
+                CASE
+                  WHEN TRIM(BOTH FROM COALESCE(a.jisyakbn::text, '')) = '1'
+                  THEN COALESCE(a.skingu, 0)::numeric
+                  ELSE 0
+                END
+              ) AS gaityu_kin,
+              SUM(COALESCE(a.skingu, 0)::numeric) AS total_kin
+            FROM siire_d AS a
+            WHERE a.sirymd >= $1 AND a.sirymd <= $2
+            GROUP BY a.siryaku
+            ORDER BY a.siryaku ASC;
+          `;
+          const values = [formattedStartDate, formattedEndDate];
+          const result = await pool.query(queryText, values);
+          return res.status(200).json(result.rows);
+        }
 
         if (view === "detail") {
           const tknm = req.query.tknm;

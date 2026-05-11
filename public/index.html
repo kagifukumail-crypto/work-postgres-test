@@ -119,6 +119,26 @@
       background: #fff;
     }
     .sql-status { color: #666; font-size: 13px; margin-top: 4px; }
+    .tana-highlight-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+    .tana-highlight-box {
+      flex: 1;
+      min-width: 260px;
+      border-radius: 12px;
+      padding: 28px 20px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+    .tana-highlight-box .tana-amount {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-top: 10px;
+      letter-spacing: 0.02em;
+    }
   </style>
 </head>
 <body>
@@ -126,6 +146,9 @@
     <aside class="sidebar">
       <div class="sidebar-title">メニュー</div>
       <button type="button" id="menu-sales" class="menu-btn active" onclick="switchMenu('sales')">売上データ</button>
+      <button type="button" id="menu-purchase" class="menu-btn" onclick="switchMenu('purchase')">仕入データ</button>
+      <button type="button" id="menu-tana" class="menu-btn" onclick="switchMenu('tana')">棚卸データ</button>
+      <button type="button" id="menu-zaiko" class="menu-btn" onclick="switchMenu('zaiko')">在庫データ</button>
       <button type="button" id="menu-sql" class="menu-btn" onclick="switchMenu('sql')">SQL情報</button>
     </aside>
 
@@ -187,20 +210,143 @@
         </div>
       </section>
 
+      <section id="page-purchase" class="page">
+        <h2>仕入データ</h2>
+
+        <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <label>期間指定：</label>
+          <input type="date" id="si-start-date"> 〜 <input type="date" id="si-end-date">
+          <button class="btn" type="button" onclick="fetchPurchaseData()">データを取得する</button>
+        </div>
+
+        <div style="margin-bottom: 12px; background: #fff8e1; padding: 12px 15px; border-radius: 5px; border: 1px solid #ffe082;">
+          <strong>総合計：</strong><span id="si-grand-total">-</span>
+        </div>
+        <div style="margin-bottom: 12px; background: #eef6ff; padding: 12px 15px; border-radius: 5px; border: 1px solid #bfdbfe;">
+          <strong style="display:block; margin-bottom:8px;">カテゴリ別総合計</strong>
+          <span style="margin-right: 16px;"><strong>仕入額：</strong><span id="si-cat-siire-kin">-</span></span>
+          <span style="margin-right: 16px;"><strong>外注：</strong><span id="si-cat-gaityu-kin">-</span></span>
+          <span style="margin-right: 16px;"><strong>仲介材：</strong><span id="si-cat-chukai-zai">-</span></span>
+          <span><strong>合計金額：</strong><span id="si-cat-total-kin">-</span></span>
+        </div>
+
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" id="si-tab-summary" role="tab" aria-selected="true" onclick="switchTabPurchase('summary')">会社別集計</button>
+          <button type="button" class="tab" id="si-tab-detail" role="tab" aria-selected="false" onclick="switchTabPurchase('detail')">仕入先明細</button>
+        </div>
+
+        <div id="si-panel-summary" class="tab-panel active" role="tabpanel">
+          <table>
+            <thead>
+              <tr id="si-table-head-summary"></tr>
+            </thead>
+            <tbody id="si-table-body-summary">
+              <tr><td colspan="5">期間を指定してデータを取得してください。</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="si-panel-detail" class="tab-panel" role="tabpanel">
+          <div class="detail-toolbar">
+            <label for="si-select-detail">仕入先：</label>
+            <select id="si-select-detail">
+              <option value="">選択してください</option>
+            </select>
+            <span style="margin-left: 12px; color: #666; font-size: 14px;">※明細の選択肢は集計取得後に設定予定です</span>
+          </div>
+          <table>
+            <thead>
+              <tr id="si-table-head-detail"></tr>
+            </thead>
+            <tbody id="si-table-body-detail">
+              <tr><td colspan="5">表示内容は今後追加予定です。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-tana" class="page">
+        <h2>棚卸データ</h2>
+        <div style="margin-bottom: 20px; background: #fff; padding: 18px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="margin-bottom: 16px;">
+            <label style="font-weight: bold;">期間指定(プルダウン)[比較1]</label>
+            <span style="margin-left: 8px; color: #555;">（<strong>年度(過去)</strong>：a.nendo）</span>
+            <div style="margin-top: 8px;">
+              <select id="tana-nendo-compare1" style="min-width: 280px; padding: 10px 12px; font-size: 15px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="font-weight: bold;">期間指定(プルダウン)[比較2]</label>
+            <span style="margin-left: 8px; color: #555;">（<strong>年度(直近)</strong>：a.nendo）</span>
+            <div style="margin-top: 8px;">
+              <select id="tana-nendo-compare2" style="min-width: 280px; padding: 10px 12px; font-size: 15px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn" type="button" onclick="fetchTanaZaikin()">在庫額を表示</button>
+        </div>
+        <div class="tana-highlight-row">
+          <div class="tana-highlight-box" style="background: linear-gradient(160deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #2563eb;">
+            <div style="font-size: 16px; font-weight: bold; color: #1e3a8a;">期間在庫額(過去)</div>
+            <div class="tana-amount" id="tana-past-amount">-</div>
+            <div style="font-size: 13px; color: #64748b; margin-top: 8px;">比較1で選んだ年度の a.zaikin 合計</div>
+          </div>
+          <div class="tana-highlight-box" style="background: linear-gradient(160deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #059669;">
+            <div style="font-size: 16px; font-weight: bold; color: #064e3b;">期間在庫額(直近)</div>
+            <div class="tana-amount" id="tana-recent-amount">-</div>
+            <div style="font-size: 13px; color: #64748b; margin-top: 8px;">比較2で選んだ年度の a.zaikin 合計</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="page-zaiko" class="page">
+        <h2>在庫データ</h2>
+        <div style="margin-bottom: 20px; background: #fff; padding: 18px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <div style="margin-bottom: 16px;">
+            <label style="font-weight: bold;">期間指定(プルダウン)</label>
+            <span style="margin-left: 8px; color: #555;">（<strong>集計年度</strong>：zaikom_d a の a.nendo）</span>
+            <div style="margin-top: 8px;">
+              <select id="zaiko-nendo-select" style="min-width: 280px; padding: 10px 12px; font-size: 15px; border-radius: 6px; border: 1px solid #ccc;">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn" type="button" onclick="fetchZaikoMonthly()">月次在庫額を表示</button>
+        </div>
+        <div class="tana-highlight-row">
+          <div class="tana-highlight-box" style="background: linear-gradient(160deg, #faf5ff 0%, #e9d5ff 100%); border: 2px solid #7c3aed; max-width: 520px;">
+            <div style="font-size: 16px; font-weight: bold; color: #5b21b6;">月次在庫額</div>
+            <div class="tana-amount" id="zaiko-monthly-amount">-</div>
+            <div style="font-size: 13px; color: #64748b; margin-top: 8px;">選択した集計年度に一致する a.zaikin の合計</div>
+          </div>
+        </div>
+      </section>
+
       <section id="page-sql" class="page">
         <h2>SQL情報</h2>
+        <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <label>期間指定：</label>
+          <input type="date" id="sql-info-start-date" onchange="fetchSqlPreview()"> 〜 <input type="date" id="sql-info-end-date" onchange="fetchSqlPreview()">
+        </div>
         <div class="sql-card">
           <div class="sql-toolbar">
             <label for="sql-table-select">テーブル一覧：</label>
             <select id="sql-table-select" onchange="onSqlTableChanged()">
               <option value="">テーブルを選択してください</option>
             </select>
+            <label for="sql-date-filter-select">期間で絞るカラム：</label>
+            <select id="sql-date-filter-select" onchange="fetchSqlPreview()">
+              <option value="">（テーブルを選択してください）</option>
+            </select>
             <label for="sql-column-select">カラム一覧（複数選択可）：</label>
             <select id="sql-column-select" multiple size="8" onchange="fetchSqlPreview()">
               <option value="">カラムを選択してください</option>
             </select>
           </div>
-          <div id="sql-status" class="sql-status">テーブルを選択後、Ctrl/Shift で複数カラムを選択すると内容を最大50行表示します。</div>
+          <div id="sql-status" class="sql-status">テーブルと表示カラムを選び、期間指定で絞り込む場合は開始・終了と「期間で絞るカラム」を設定してください（最大50行）。期間未入力のときは先頭から50行です。</div>
           <table>
             <thead>
               <tr id="sql-preview-head"></tr>
@@ -217,17 +363,320 @@
   <script>
     const BASE_URL = "http://127.0.0.1:5001/work-postgres-test/us-central1/getData";
     const SUMMARY_MONEY_KEYS = ["lz_kin", "pz_kin", "gaityu_kin", "tyukai_kin", "zaiko_kin", "hoka_kin", "total_kin"];
+    const PURCHASE_SUMMARY_MONEY_KEYS = ["siire_kin", "gaityu_kin", "chukai_zai", "total_kin"];
     let summarySortState = { key: null, dir: "asc" };
     let latestSummaryRows = [];
+    let purchaseSortState = { key: null, dir: "asc" };
+    let latestPurchaseSummaryRows = [];
 
     function switchMenu(name) {
-      const isSales = name === "sales";
-      document.getElementById("menu-sales").classList.toggle("active", isSales);
-      document.getElementById("menu-sql").classList.toggle("active", !isSales);
-      document.getElementById("page-sales").classList.toggle("active", isSales);
-      document.getElementById("page-sql").classList.toggle("active", !isSales);
-      if (!isSales) {
+      document.getElementById("menu-sales").classList.toggle("active", name === "sales");
+      document.getElementById("menu-purchase").classList.toggle("active", name === "purchase");
+      document.getElementById("menu-tana").classList.toggle("active", name === "tana");
+      document.getElementById("menu-zaiko").classList.toggle("active", name === "zaiko");
+      document.getElementById("menu-sql").classList.toggle("active", name === "sql");
+      document.getElementById("page-sales").classList.toggle("active", name === "sales");
+      document.getElementById("page-purchase").classList.toggle("active", name === "purchase");
+      document.getElementById("page-tana").classList.toggle("active", name === "tana");
+      document.getElementById("page-zaiko").classList.toggle("active", name === "zaiko");
+      document.getElementById("page-sql").classList.toggle("active", name === "sql");
+      if (name === "sql") {
         loadSqlTables();
+        syncSqlPeriodFromSalesIfEmpty();
+      }
+      if (name === "tana") {
+        loadTanaNendoOptions();
+      }
+      if (name === "zaiko") {
+        loadZaikoNendoOptions();
+      }
+    }
+
+    async function loadTanaNendoOptions() {
+      const s1 = document.getElementById("tana-nendo-compare1");
+      const s2 = document.getElementById("tana-nendo-compare2");
+      if (!s1 || !s2) return;
+      const prev1 = s1.value;
+      const prev2 = s2.value;
+      try {
+        const res = await fetch(`${BASE_URL}?view=tanameta`);
+        if (!res.ok) throw new Error("年度一覧の取得に失敗");
+        const data = await res.json();
+        const list = Array.isArray(data.nendoList) ? data.nendoList : [];
+        s1.innerHTML = '<option value="">選択してください</option>';
+        s2.innerHTML = '<option value="">選択してください</option>';
+        list.forEach((n) => {
+          const v = String(n);
+          const o1 = document.createElement("option");
+          o1.value = v;
+          o1.textContent = v;
+          s1.appendChild(o1);
+          const o2 = document.createElement("option");
+          o2.value = v;
+          o2.textContent = v;
+          s2.appendChild(o2);
+        });
+        if (list.some((n) => String(n) === prev1)) s1.value = prev1;
+        if (list.some((n) => String(n) === prev2)) s2.value = prev2;
+      } catch (e) {
+        console.error(e);
+        alert("年度一覧の取得に失敗しました。テーブル tana_d や権限を確認してください。");
+      }
+    }
+
+    async function loadZaikoNendoOptions() {
+      const sel = document.getElementById("zaiko-nendo-select");
+      if (!sel) return;
+      const prev = sel.value;
+      try {
+        const res = await fetch(`${BASE_URL}?view=zaikommeta`);
+        if (!res.ok) throw new Error("年度一覧の取得に失敗");
+        const data = await res.json();
+        const list = Array.isArray(data.nendoList) ? data.nendoList : [];
+        sel.innerHTML = '<option value="">選択してください</option>';
+        list.forEach((n) => {
+          const v = String(n);
+          const o = document.createElement("option");
+          o.value = v;
+          o.textContent = v;
+          sel.appendChild(o);
+        });
+        if (list.some((n) => String(n) === prev)) sel.value = prev;
+      } catch (e) {
+        console.error(e);
+        alert("年度一覧の取得に失敗しました。テーブル zaikom_d や権限を確認してください。");
+      }
+    }
+
+    async function fetchZaikoMonthly() {
+      const sel = document.getElementById("zaiko-nendo-select");
+      const amtEl = document.getElementById("zaiko-monthly-amount");
+      if (!sel || !amtEl) return;
+      const n = sel.value;
+      if (!n) {
+        alert("集計年度を選択してください。");
+        return;
+      }
+      amtEl.textContent = "読み込み中...";
+      try {
+        const url = `${BASE_URL}?view=zaikomsummary&nendo=${encodeURIComponent(n)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("取得失敗");
+        const data = await res.json();
+        const z = Number(data.monthlyZaikin);
+        amtEl.textContent = Number.isFinite(z) ? z.toLocaleString() : String(data.monthlyZaikin ?? "-");
+      } catch (e) {
+        console.error(e);
+        amtEl.textContent = "エラー";
+      }
+    }
+
+    async function fetchTanaZaikin() {
+      const s1 = document.getElementById("tana-nendo-compare1");
+      const s2 = document.getElementById("tana-nendo-compare2");
+      const pastEl = document.getElementById("tana-past-amount");
+      const recentEl = document.getElementById("tana-recent-amount");
+      if (!s1 || !s2 || !pastEl || !recentEl) return;
+      const n1 = s1.value;
+      const n2 = s2.value;
+      if (!n1 || !n2) {
+        alert("比較1・比較2の年度を選択してください。");
+        return;
+      }
+      pastEl.textContent = "読み込み中...";
+      recentEl.textContent = "読み込み中...";
+      try {
+        const url = `${BASE_URL}?view=tanasummary&nendo1=${encodeURIComponent(n1)}&nendo2=${encodeURIComponent(n2)}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("取得失敗");
+        const data = await res.json();
+        const pz = Number(data.pastZaikin);
+        const rz = Number(data.recentZaikin);
+        pastEl.textContent = Number.isFinite(pz) ? pz.toLocaleString() : String(data.pastZaikin ?? "-");
+        recentEl.textContent = Number.isFinite(rz) ? rz.toLocaleString() : String(data.recentZaikin ?? "-");
+      } catch (e) {
+        console.error(e);
+        pastEl.textContent = "エラー";
+        recentEl.textContent = "エラー";
+      }
+    }
+
+    function switchTabPurchase(name) {
+      const isSummary = name === "summary";
+      document.getElementById("si-tab-summary").classList.toggle("active", isSummary);
+      document.getElementById("si-tab-detail").classList.toggle("active", !isSummary);
+      document.getElementById("si-tab-summary").setAttribute("aria-selected", isSummary ? "true" : "false");
+      document.getElementById("si-tab-detail").setAttribute("aria-selected", !isSummary ? "true" : "false");
+      document.getElementById("si-panel-summary").classList.toggle("active", isSummary);
+      document.getElementById("si-panel-detail").classList.toggle("active", !isSummary);
+    }
+
+    function getPurchaseSummaryDisplayColumns() {
+      return [
+        { key: "siryaku", label: "仕入先" },
+        { key: "siire_kin", label: "仕入額" },
+        { key: "gaityu_kin", label: "外注" },
+        { key: "chukai_zai", label: "仲介材" },
+        { key: "total_kin", label: "合計金額" }
+      ];
+    }
+
+    function getSortedPurchaseSummaryRows(rows) {
+      if (!purchaseSortState.key) return [...rows];
+      const sorted = [...rows];
+      const key = purchaseSortState.key;
+      const dir = purchaseSortState.dir === "desc" ? -1 : 1;
+      sorted.sort((a, b) => {
+        const av = Number(a[key]);
+        const bv = Number(b[key]);
+        const aa = Number.isFinite(av) ? av : 0;
+        const bb = Number.isFinite(bv) ? bv : 0;
+        if (aa < bb) return -1 * dir;
+        if (aa > bb) return 1 * dir;
+        return 0;
+      });
+      return sorted;
+    }
+
+    function renderPurchaseSummaryTable(rows) {
+      const theadSum = document.getElementById("si-table-head-summary");
+      const tbodySum = document.getElementById("si-table-body-summary");
+      if (!theadSum || !tbodySum) return;
+
+      const displayColumns = getPurchaseSummaryDisplayColumns();
+      const sortedRows = getSortedPurchaseSummaryRows(rows);
+
+      theadSum.innerHTML = "";
+      displayColumns.forEach((col) => {
+        const th = document.createElement("th");
+        const isSortable = PURCHASE_SUMMARY_MONEY_KEYS.includes(col.key);
+        const isActive = purchaseSortState.key === col.key;
+        const arrow = isActive ? (purchaseSortState.dir === "asc" ? " ▲" : " ▼") : "";
+        th.textContent = `${col.label}${arrow}`;
+        if (isSortable) {
+          th.style.cursor = "pointer";
+          th.title = "クリックで昇順/降順を切り替え";
+          th.onclick = () => togglePurchaseSort(col.key);
+        }
+        theadSum.appendChild(th);
+      });
+
+      tbodySum.innerHTML = "";
+      if (rows.length === 0) {
+        tbodySum.innerHTML = "<tr><td colspan='5'>指定された期間のデータがありません</td></tr>";
+        return;
+      }
+
+      sortedRows.forEach((row) => {
+        const tr = document.createElement("tr");
+        displayColumns.forEach((col) => {
+          const td = document.createElement("td");
+          td.textContent = PURCHASE_SUMMARY_MONEY_KEYS.includes(col.key) ? formatNum(row[col.key]) : row[col.key];
+          tr.appendChild(td);
+        });
+        tbodySum.appendChild(tr);
+      });
+    }
+
+    function togglePurchaseSort(key) {
+      if (purchaseSortState.key === key) {
+        purchaseSortState.dir = purchaseSortState.dir === "asc" ? "desc" : "asc";
+      } else {
+        purchaseSortState.key = key;
+        purchaseSortState.dir = "asc";
+      }
+      renderPurchaseSummaryTable(latestPurchaseSummaryRows);
+    }
+
+    function populateSiSelectDetail(rows) {
+      const sel = document.getElementById("si-select-detail");
+      if (!sel) return;
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">選択してください</option>';
+      rows.forEach((row) => {
+        const name = row.siryaku;
+        if (name == null || name === "") return;
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        sel.appendChild(opt);
+      });
+      const match = [...sel.options].some((o) => o.value === prev);
+      if (match) sel.value = prev;
+    }
+
+    async function fetchPurchaseData() {
+      const tbodySum = document.getElementById("si-table-body-summary");
+      const theadSum = document.getElementById("si-table-head-summary");
+      const tbodyDet = document.getElementById("si-table-body-detail");
+      const grandTotalEl = document.getElementById("si-grand-total");
+      const catSiireEl = document.getElementById("si-cat-siire-kin");
+      const catChukaiEl = document.getElementById("si-cat-chukai-zai");
+      const catGaityuEl = document.getElementById("si-cat-gaityu-kin");
+      const catTotalEl = document.getElementById("si-cat-total-kin");
+      const startDate = document.getElementById("si-start-date").value;
+      const endDate = document.getElementById("si-end-date").value;
+
+      if (!startDate || !endDate) {
+        alert("開始日と終了日を両方入力してください！");
+        return;
+      }
+
+      grandTotalEl.textContent = "計算中...";
+      if (catSiireEl) catSiireEl.textContent = "計算中...";
+      if (catChukaiEl) catChukaiEl.textContent = "計算中...";
+      if (catGaityuEl) catGaityuEl.textContent = "計算中...";
+      if (catTotalEl) catTotalEl.textContent = "計算中...";
+      if (!theadSum || !tbodySum) return;
+      theadSum.innerHTML = "";
+      tbodySum.innerHTML = "<tr><td colspan='5'>読み込み中...</td></tr>";
+
+      try {
+        const url = `${BASE_URL}?view=purchasesummary&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("ネットワークエラー");
+        const data = await response.json();
+
+        populateSiSelectDetail(data);
+
+        latestPurchaseSummaryRows = data;
+        renderPurchaseSummaryTable(data);
+
+        if (data.length === 0) {
+          grandTotalEl.textContent = "0";
+          if (catSiireEl) catSiireEl.textContent = "0";
+          if (catChukaiEl) catChukaiEl.textContent = "0";
+          if (catGaityuEl) catGaityuEl.textContent = "0";
+          if (catTotalEl) catTotalEl.textContent = "0";
+          return;
+        }
+
+        const grandTotal = data.reduce((sum, row) => {
+          const n = Number(row.total_kin);
+          return Number.isFinite(n) ? sum + n : sum;
+        }, 0);
+        grandTotalEl.textContent = grandTotal.toLocaleString();
+
+        const sumSiire = data.reduce((s, row) => s + (Number.isFinite(Number(row.siire_kin)) ? Number(row.siire_kin) : 0), 0);
+        const sumChukai = data.reduce((s, row) => s + (Number.isFinite(Number(row.chukai_zai)) ? Number(row.chukai_zai) : 0), 0);
+        const sumGaityu = data.reduce((s, row) => s + (Number.isFinite(Number(row.gaityu_kin)) ? Number(row.gaityu_kin) : 0), 0);
+        const sumTotalCat = data.reduce((s, row) => s + (Number.isFinite(Number(row.total_kin)) ? Number(row.total_kin) : 0), 0);
+        if (catSiireEl) catSiireEl.textContent = sumSiire.toLocaleString();
+        if (catChukaiEl) catChukaiEl.textContent = sumChukai.toLocaleString();
+        if (catGaityuEl) catGaityuEl.textContent = sumGaityu.toLocaleString();
+        if (catTotalEl) catTotalEl.textContent = sumTotalCat.toLocaleString();
+      } catch (e) {
+        console.error(e);
+        tbodySum.innerHTML = "<tr><td colspan='5' style='color:red;'>エラーが発生しました。コンソールを確認してください。</td></tr>";
+        grandTotalEl.textContent = "エラー";
+        if (catSiireEl) catSiireEl.textContent = "エラー";
+        if (catChukaiEl) catChukaiEl.textContent = "エラー";
+        if (catGaityuEl) catGaityuEl.textContent = "エラー";
+        if (catTotalEl) catTotalEl.textContent = "エラー";
+      }
+
+      if (tbodyDet) {
+        tbodyDet.innerHTML = "<tr><td colspan='5'>仕入先明細は今後追加予定です。</td></tr>";
       }
     }
 
@@ -360,6 +809,15 @@
       renderSummaryTable(latestSummaryRows);
     }
 
+    function syncSqlPeriodFromSalesIfEmpty() {
+      const s = document.getElementById("start-date")?.value;
+      const e = document.getElementById("end-date")?.value;
+      const sqlS = document.getElementById("sql-info-start-date");
+      const sqlE = document.getElementById("sql-info-end-date");
+      if (sqlS && sqlS.value === "" && s) sqlS.value = s;
+      if (sqlE && sqlE.value === "" && e) sqlE.value = e;
+    }
+
     async function loadSqlTables() {
       const tableSel = document.getElementById("sql-table-select");
       const colSel = document.getElementById("sql-column-select");
@@ -394,6 +852,7 @@
     async function onSqlTableChanged() {
       const tableSel = document.getElementById("sql-table-select");
       const colSel = document.getElementById("sql-column-select");
+      const filterSel = document.getElementById("sql-date-filter-select");
       const status = document.getElementById("sql-status");
       const head = document.getElementById("sql-preview-head");
       const body = document.getElementById("sql-preview-body");
@@ -401,6 +860,9 @@
 
       const tableName = tableSel.value;
       colSel.innerHTML = "";
+      if (filterSel) {
+        filterSel.innerHTML = '<option value="">（期間を使わない／カラム指定なし）</option>';
+      }
       head.innerHTML = "";
       body.innerHTML = "<tr><td>カラムを選択してください</td></tr>";
       if (!tableName) {
@@ -422,6 +884,15 @@
           opt.textContent = c;
           colSel.appendChild(opt);
         });
+        if (filterSel) {
+          filterSel.innerHTML = '<option value="">（期間を使わない／カラム指定なし）</option>';
+          columns.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c;
+            opt.textContent = c;
+            filterSel.appendChild(opt);
+          });
+        }
         status.textContent = "カラムを選択してください。";
       } catch (e) {
         console.error(e);
@@ -432,6 +903,9 @@
     async function fetchSqlPreview() {
       const tableSel = document.getElementById("sql-table-select");
       const colSel = document.getElementById("sql-column-select");
+      const filterSel = document.getElementById("sql-date-filter-select");
+      const periodStart = document.getElementById("sql-info-start-date")?.value || "";
+      const periodEnd = document.getElementById("sql-info-end-date")?.value || "";
       const status = document.getElementById("sql-status");
       const head = document.getElementById("sql-preview-head");
       const body = document.getElementById("sql-preview-body");
@@ -439,6 +913,17 @@
 
       const tableName = tableSel.value;
       const selectedColumns = [...colSel.selectedOptions].map((opt) => opt.value).filter((v) => v);
+      const dateCol = filterSel ? filterSel.value : "";
+
+      if ((periodStart && !periodEnd) || (!periodStart && periodEnd)) {
+        alert("開始日と終了日を両方入力してください。");
+        return;
+      }
+      if (periodStart && periodEnd && !dateCol) {
+        alert("期間指定で絞り込む場合は、「期間で絞るカラム」を選択してください。");
+        return;
+      }
+
       head.innerHTML = "";
       if (!tableName || selectedColumns.length === 0) {
         body.innerHTML = "<tr><td>テーブルとカラムを選択してください（複数選択可）</td></tr>";
@@ -448,7 +933,10 @@
       body.innerHTML = "<tr><td>読み込み中...</td></tr>";
       status.textContent = `内容を取得中...（${tableName}.${selectedColumns.join(", ")}）`;
       try {
-        const url = `${BASE_URL}?view=sqlpreview&tableName=${encodeURIComponent(tableName)}&columnNames=${encodeURIComponent(selectedColumns.join(","))}`;
+        let url = `${BASE_URL}?view=sqlpreview&tableName=${encodeURIComponent(tableName)}&columnNames=${encodeURIComponent(selectedColumns.join(","))}`;
+        if (periodStart && periodEnd && dateCol) {
+          url += `&startDate=${encodeURIComponent(periodStart)}&endDate=${encodeURIComponent(periodEnd)}&dateColumn=${encodeURIComponent(dateCol)}`;
+        }
         const res = await fetch(url);
         if (!res.ok) throw new Error("内容取得失敗");
         const data = await res.json();
