@@ -169,6 +169,8 @@
       gap: 12px;
       align-items: start;
       font-size: 16px;
+      --tsuki-card-width: min(22rem, calc(100vw - 6rem));
+      --tsuki-columns-gap: 12px;
     }
     .tsuki-grid .tana-highlight-box {
       max-width: none !important;
@@ -181,6 +183,10 @@
     .tsuki-grid .tsuki-summary-box {
       grid-column: 1 / -1;
       padding: 18px 18px;
+      width: min(calc(2 * var(--tsuki-card-width) + var(--tsuki-columns-gap)), 100%);
+      max-width: 100%;
+      justify-self: start;
+      box-sizing: border-box;
     }
     .tsuki-grid .tana-highlight-box .tana-amount {
       font-size: inherit;
@@ -190,14 +196,20 @@
     .tsuki-grid .tsuki-metric-list {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 8px 16px;
+      gap: 6px 8px;
       font-size: 16px;
       align-items: baseline;
       max-width: 100%;
     }
+    .tsuki-grid .tsuki-metric-list strong {
+      text-align: left;
+      justify-self: start;
+      font-weight: bold;
+    }
     .tsuki-grid .tsuki-metric-list span {
       font-weight: bold;
       text-align: right;
+      justify-self: end;
     }
     .tsuki-grid .tsuki-title {
       font-size: 18px;
@@ -210,34 +222,150 @@
     }
     .tsuki-grid .tsuki-summary-box .tsuki-metric-list {
       font-size: 18px;
-      gap: 10px 18px;
+      gap: 8px 10px;
     }
     .tsuki-grid .tsuki-summary-box .tsuki-metric-list span {
       font-size: 1.08em;
     }
     .tsuki-columns {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: repeat(2, max-content);
+      gap: 10px var(--tsuki-columns-gap);
       grid-column: 1 / -1;
       align-items: start;
+      justify-content: start;
     }
     .tsuki-stack {
       display: grid;
       gap: 10px;
+      justify-items: start;
+    }
+    .tsuki-columns .tsuki-stack > .tana-highlight-box {
+      width: var(--tsuki-card-width);
+      max-width: 100%;
+      box-sizing: border-box;
     }
     @media (max-width: 1200px) {
       .tsuki-grid { grid-template-columns: 1fr; }
-      .tsuki-grid .tsuki-summary-box { grid-column: auto; }
+      .tsuki-grid .tsuki-summary-box {
+        grid-column: auto;
+        width: min(var(--tsuki-card-width), 100%);
+      }
       .tsuki-columns { grid-template-columns: 1fr; }
     }
     @page {
       size: A4 portrait;
       margin: 10mm;
     }
+    #page-kiuki h2 {
+      font-size: 1.45rem;
+    }
+    .kiuki-toolbar {
+      margin-bottom: 14px;
+      background: #fff;
+      padding: 14px 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      align-items: center;
+    }
+    .kiuki-toolbar label { font-size: 16px; font-weight: bold; }
+    .kiuki-toolbar select {
+      min-width: 200px;
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    #kiuki-months-select { min-width: 100px; }
+    .kiuki-table-wrap {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      padding: 14px;
+      overflow-x: auto;
+    }
+    .kiuki-period-summary {
+      margin-bottom: 16px;
+    }
+    .kiuki-period-summary-title {
+      font-size: 1.1rem;
+      margin: 0 0 8px 0;
+      color: #1e3a5f;
+    }
+    .kiuki-period-summary-wrap {
+      margin-bottom: 0;
+    }
+    .kiuki-period-summary-table {
+      max-width: 52rem;
+    }
+    .kiuki-period-summary-table thead th.kiuki-period-th-item {
+      text-align: left;
+      width: 42%;
+    }
+    .kiuki-period-summary-table thead th.kiuki-period-th-value {
+      text-align: center;
+      font-weight: bold;
+    }
+    .kiuki-period-summary-table tbody th.kiuki-period-row-head {
+      vertical-align: top;
+      font-weight: bold;
+      text-align: left;
+      background: #f8fafc;
+    }
+    .kiuki-period-summary-table tbody td.kiuki-period-value-cell {
+      vertical-align: top;
+      text-align: right;
+      background: #fff;
+    }
+    .kiuki-period-cell-sub {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: normal;
+      margin-bottom: 6px;
+      text-align: right;
+    }
+    .kiuki-period-cell-val {
+      font-size: 16px;
+      font-weight: bold;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .kiuki-summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0;
+      font-size: 14px;
+      background: #fff;
+      box-shadow: none;
+    }
+    .kiuki-summary-table th,
+    .kiuki-summary-table td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .kiuki-summary-table th.kiuki-th-label,
+    .kiuki-summary-table td.kiuki-td-label {
+      text-align: left;
+      font-weight: bold;
+      background: #eff6ff;
+      white-space: normal;
+      min-width: 8.5rem;
+    }
+    .kiuki-summary-table thead th {
+      background: #dbeafe;
+      text-align: center;
+    }
+    .kiuki-summary-table thead th.kiuki-th-label {
+      text-align: left;
+    }
     @media print {
       body { background: #fff; }
-      .sidebar, .tabs, .tab-panel, #page-sales, #page-purchase, #page-tana, #page-zaiko, #page-sql { display: none !important; }
+      .sidebar, .tabs, .tab-panel, #page-sales, #page-purchase, #page-tana, #page-zaiko, #page-sql, #page-kiuki { display: none !important; }
       .layout, .main-content { display: block; padding: 0; margin: 0; }
       #page-tsuki { display: block !important; }
       .tsuki-toolbar .btn { display: none !important; }
@@ -249,12 +377,26 @@
       .tsuki-grid {
         grid-template-columns: 1fr;
         gap: 6px;
+        --tsuki-card-width: min(20rem, calc(100vw - 12mm));
+        --tsuki-columns-gap: 10px;
       }
       .tsuki-columns {
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
+        grid-template-columns: repeat(2, max-content);
+        gap: 8px var(--tsuki-columns-gap);
+        justify-content: start;
       }
-      .tsuki-stack { gap: 8px; }
+      .tsuki-stack { gap: 8px; justify-items: start; }
+      .tsuki-columns .tsuki-stack > .tana-highlight-box {
+        width: var(--tsuki-card-width);
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      .tsuki-grid .tsuki-summary-box {
+        width: min(calc(2 * var(--tsuki-card-width) + var(--tsuki-columns-gap)), 100%);
+        max-width: 100%;
+        justify-self: start;
+        box-sizing: border-box;
+      }
       .tsuki-grid .tana-highlight-box {
         box-shadow: none;
         break-inside: avoid;
@@ -262,9 +404,80 @@
       }
       .tsuki-grid .tsuki-title { font-size: 14px; margin-bottom: 6px; }
       .tsuki-grid .tsuki-summary-box .tsuki-title { font-size: 17px; }
-      .tsuki-grid .tsuki-metric-list { font-size: 12px; gap: 4px 10px; }
+      .tsuki-grid .tsuki-metric-list { font-size: 12px; gap: 3px 6px; }
+      .tsuki-grid .tsuki-metric-list strong { text-align: left; justify-self: start; }
       .tsuki-grid .tsuki-summary-box .tsuki-metric-list { font-size: 13px; }
       .tsuki-grid .tana-highlight-box .tana-amount { font-size: inherit; }
+    }
+    @media print {
+      body.kiuki-print-mode .sidebar,
+      body.kiuki-print-mode .tabs,
+      body.kiuki-print-mode .tab-panel,
+      body.kiuki-print-mode #page-sales,
+      body.kiuki-print-mode #page-purchase,
+      body.kiuki-print-mode #page-tana,
+      body.kiuki-print-mode #page-zaiko,
+      body.kiuki-print-mode #page-tsuki,
+      body.kiuki-print-mode #page-sql {
+        display: none !important;
+      }
+      body.kiuki-print-mode html,
+      body.kiuki-print-mode {
+        height: auto !important;
+        min-height: 0 !important;
+      }
+      body.kiuki-print-mode #page-kiuki {
+        display: block !important;
+      }
+      body.kiuki-print-mode .layout {
+        display: block !important;
+        min-height: 0 !important;
+        height: auto !important;
+      }
+      body.kiuki-print-mode .main-content {
+        flex: none !important;
+        min-height: 0 !important;
+        display: block;
+        padding: 0;
+        margin: 0;
+      }
+      body.kiuki-print-mode #page-kiuki .kiuki-page-root {
+        break-after: avoid-page;
+        page-break-after: avoid;
+      }
+      body.kiuki-print-mode .kiuki-summary-table {
+        margin-top: 0 !important;
+      }
+      body.kiuki-print-mode .kiuki-toolbar .btn {
+        display: none !important;
+      }
+      body.kiuki-print-mode .kiuki-toolbar {
+        box-shadow: none;
+        border: 1px solid #ccc;
+        margin-bottom: 6px;
+      }
+      body.kiuki-print-mode .kiuki-table-wrap {
+        box-shadow: none;
+        padding: 0;
+        overflow: visible;
+      }
+      body.kiuki-print-mode .kiuki-summary-table {
+        font-size: 11px;
+      }
+      body.kiuki-print-mode .kiuki-summary-table th,
+      body.kiuki-print-mode .kiuki-summary-table td {
+        padding: 5px 6px;
+      }
+      body.kiuki-print-mode .kiuki-period-summary-table {
+        font-size: 11px;
+      }
+      body.kiuki-print-mode .kiuki-period-cell-sub {
+        font-size: 9px;
+        margin-bottom: 3px;
+      }
+      body.kiuki-print-mode .kiuki-period-cell-val {
+        font-size: 11px;
+      }
     }
   </style>
 </head>
@@ -277,6 +490,7 @@
       <button type="button" id="menu-tana" class="menu-btn" onclick="switchMenu('tana')">棚卸データ</button>
       <button type="button" id="menu-zaiko" class="menu-btn" onclick="switchMenu('zaiko')">在庫データ</button>
       <button type="button" id="menu-tsuki" class="menu-btn" onclick="switchMenu('tsuki')">月次レポート</button>
+      <button type="button" id="menu-kiuki" class="menu-btn" onclick="switchMenu('kiuki')">期間推移レポート</button>
       <button type="button" id="menu-sql" class="menu-btn" onclick="switchMenu('sql')">SQL情報</button>
     </aside>
 
@@ -529,6 +743,87 @@
         </div>
       </section>
 
+      <section id="page-kiuki" class="page">
+        <div class="kiuki-page-root">
+          <h2>期間推移レポート</h2>
+          <div class="kiuki-toolbar">
+            <label for="kiuki-start-select">開始年月</label>
+            <select id="kiuki-start-select">
+              <option value="">選択してください</option>
+            </select>
+            <label for="kiuki-months-select">表示月数</label>
+            <select id="kiuki-months-select">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+            </select>
+            <button type="button" class="btn" onclick="fetchKiukiReport()">表示</button>
+            <button type="button" class="btn" onclick="printKiukiReport()" style="background-color:#4b5563;">印刷</button>
+          </div>
+          <div class="kiuki-period-summary" id="kiuki-period-summary">
+            <h3 class="kiuki-period-summary-title">期間サマリー</h3>
+            <div class="kiuki-table-wrap kiuki-period-summary-wrap">
+              <table class="kiuki-summary-table kiuki-period-summary-table" aria-label="期間サマリー">
+                <thead>
+                  <tr>
+                    <th class="kiuki-th-label kiuki-period-th-item">項目</th>
+                    <th class="kiuki-period-th-value">合計 / 平均</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <th scope="row" class="kiuki-td-label kiuki-period-row-head">自社総売上 合計 (平均)</th>
+                    <td class="kiuki-period-value-cell">
+                      <div class="kiuki-period-cell-sub">合計金額 (平均金額)</div>
+                      <div class="kiuki-period-cell-val" id="kiuki-per-val-uri">—</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="kiuki-td-label kiuki-period-row-head">自社総仕入 合計 (平均)</th>
+                    <td class="kiuki-period-value-cell">
+                      <div class="kiuki-period-cell-sub">合計金額 (平均金額)</div>
+                      <div class="kiuki-period-cell-val" id="kiuki-per-val-siire">—</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="kiuki-td-label kiuki-period-row-head">自社粗利益 合計 (平均)</th>
+                    <td class="kiuki-period-value-cell">
+                      <div class="kiuki-period-cell-sub">合計金額 (平均金額)</div>
+                      <div class="kiuki-period-cell-val" id="kiuki-per-val-arari">—</div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row" class="kiuki-td-label kiuki-period-row-head">自社粗利率 合計</th>
+                    <td class="kiuki-period-value-cell">
+                      <div class="kiuki-period-cell-sub">合計粗利率</div>
+                      <div class="kiuki-period-cell-val" id="kiuki-per-val-rate">—</div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="kiuki-table-wrap">
+            <table class="kiuki-summary-table" id="kiuki-summary-table" aria-label="期間推移サマリー">
+              <thead id="kiuki-thead">
+                <tr><th class="kiuki-th-label">項目</th></tr>
+              </thead>
+              <tbody id="kiuki-tbody"></tbody>
+            </table>
+          </div>
+          <p style="color:#64748b;font-size:14px;margin-top:10px;">開始年月と表示月数を選び、「表示」を押してください。期間サマリーは表の「項目」「合計/平均」に沿って、金額の平均は「データが取得できた月数」で割ります（取得失敗の月は平均の分母に含めません）。粗利率は期間全体の合計のみです。下表の各列は月次レポートの「月次サマリー」と同じ集計です。</p>
+        </div>
+      </section>
+
       <section id="page-sql" class="page">
         <h2>SQL情報</h2>
         <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -579,12 +874,14 @@
       document.getElementById("menu-tana").classList.toggle("active", name === "tana");
       document.getElementById("menu-zaiko").classList.toggle("active", name === "zaiko");
       document.getElementById("menu-tsuki").classList.toggle("active", name === "tsuki");
+      document.getElementById("menu-kiuki").classList.toggle("active", name === "kiuki");
       document.getElementById("menu-sql").classList.toggle("active", name === "sql");
       document.getElementById("page-sales").classList.toggle("active", name === "sales");
       document.getElementById("page-purchase").classList.toggle("active", name === "purchase");
       document.getElementById("page-tana").classList.toggle("active", name === "tana");
       document.getElementById("page-zaiko").classList.toggle("active", name === "zaiko");
       document.getElementById("page-tsuki").classList.toggle("active", name === "tsuki");
+      document.getElementById("page-kiuki").classList.toggle("active", name === "kiuki");
       document.getElementById("page-sql").classList.toggle("active", name === "sql");
       if (name === "sql") {
         loadSqlTables();
@@ -599,10 +896,13 @@
       if (name === "tsuki") {
         loadTsukiNendoOptions();
       }
+      if (name === "kiuki") {
+        loadKiukiStartOptions();
+      }
     }
 
-    async function loadTsukiNendoOptions() {
-      const sel = document.getElementById("tsuki-nendo-select");
+    async function loadZaikomNendoIntoSelect(selectId, emptyLabel) {
+      const sel = document.getElementById(selectId);
       if (!sel) return;
       const prev = sel.value;
       try {
@@ -610,7 +910,7 @@
         if (!res.ok) throw new Error("一覧の取得に失敗");
         const data = await res.json();
         const list = Array.isArray(data.nendoList) ? data.nendoList : [];
-        sel.innerHTML = '<option value="">選択してください</option>';
+        sel.innerHTML = `<option value="">${emptyLabel}</option>`;
         list.forEach((n) => {
           const v = String(n);
           const o = document.createElement("option");
@@ -623,6 +923,14 @@
         console.error(e);
         alert("集計年月一覧の取得に失敗しました。テーブル zaikom_d や権限を確認してください。");
       }
+    }
+
+    async function loadTsukiNendoOptions() {
+      await loadZaikomNendoIntoSelect("tsuki-nendo-select", "選択してください");
+    }
+
+    async function loadKiukiStartOptions() {
+      await loadZaikomNendoIntoSelect("kiuki-start-select", "選択してください");
     }
 
     function formatTsukiMoney(val) {
@@ -696,7 +1004,34 @@
       setText("tsuki-arari-pz-rate", rateStr);
     }
 
-    function applyTsukiMonthlySummaryFromData(data) {
+    function bumpCalendarMonth(y, m, delta) {
+      const d = new Date(y, m - 1 + delta, 1);
+      return { y: d.getFullYear(), m: d.getMonth() + 1 };
+    }
+
+    /** 開始年月の表記に合わせ、offset ヶ月後の nendo 文字列を返す（解釈不能なら null） */
+    function nendoStringForOffset(startNendoValue, offsetMonths) {
+      const raw = String(startNendoValue).trim().replace(/-/g, "/").replace(/\s+/g, "");
+      const six = raw.match(/^(\d{4})(\d{2})$/);
+      if (six) {
+        const b = bumpCalendarMonth(parseInt(six[1], 10), parseInt(six[2], 10), offsetMonths);
+        return `${b.y}${String(b.m).padStart(2, "0")}`;
+      }
+      const slash = raw.match(/^(\d{4})\/(\d{1,2})(?:\/(\d{1,2}))?$/);
+      if (slash) {
+        const monthPart = slash[2];
+        const padMonth = monthPart.length >= 2;
+        const b = bumpCalendarMonth(parseInt(slash[1], 10), parseInt(monthPart, 10), offsetMonths);
+        return padMonth ? `${b.y}/${String(b.m).padStart(2, "0")}` : `${b.y}/${b.m}`;
+      }
+      return null;
+    }
+
+    function computeTsukiMonthlySummaryFromData(data) {
+      const dash = "—";
+      if (!data || typeof data !== "object") {
+        return { sumUri: dash, sumSiire: dash, sumArari: dash, rateStr: dash, nums: null, ratePercent: null };
+      }
       const lz = Number(data.lzKin);
       const pz = Number(data.pzKin);
       const hoka = Number(data.hokaKin);
@@ -717,26 +1052,188 @@
       const sumSiire = jishaZai + gaityuSiSum;
       const sumArari = sumUri - sumSiire;
 
+      let rateStr = "—";
+      let ratePercent = null;
+      if (Number.isFinite(sumUri) && sumUri !== 0) {
+        const ratio = sumArari / sumUri;
+        ratePercent = ratio * 100;
+        rateStr = ratePercent.toFixed(1) + "%";
+      } else if (sumUri === 0 && sumSiire === 0) {
+        rateStr = "0.0%";
+        ratePercent = 0;
+      }
+      return {
+        sumUri: formatTsukiInteger(sumUri),
+        sumSiire: formatTsukiInteger(sumSiire),
+        sumArari: formatTsukiInteger(sumArari),
+        rateStr,
+        nums: { sumUri, sumSiire, sumArari },
+        ratePercent
+      };
+    }
+
+    function applyTsukiMonthlySummaryFromData(data) {
+      const r = computeTsukiMonthlySummaryFromData(data);
       const setText = (id, t) => {
         const el = document.getElementById(id);
         if (el) el.textContent = t;
       };
-      setText("tsuki-sum-uri", formatTsukiInteger(sumUri));
-      setText("tsuki-sum-siire", formatTsukiInteger(sumSiire));
-      setText("tsuki-sum-arari", formatTsukiInteger(sumArari));
-
-      let rateStr = "—";
-      if (Number.isFinite(sumUri) && sumUri !== 0) {
-        const ratio = sumArari / sumUri;
-        rateStr = (ratio * 100).toFixed(1) + "%";
-      } else if (sumUri === 0 && sumSiire === 0) {
-        rateStr = "0.0%";
-      }
-      setText("tsuki-sum-rate", rateStr);
+      setText("tsuki-sum-uri", r.sumUri);
+      setText("tsuki-sum-siire", r.sumSiire);
+      setText("tsuki-sum-arari", r.sumArari);
+      setText("tsuki-sum-rate", r.rateStr);
     }
 
     function printTsukiReport() {
       window.print();
+    }
+
+    function printKiukiReport() {
+      let st = document.getElementById("kiuki-print-page-override");
+      if (!st) {
+        st = document.createElement("style");
+        st.id = "kiuki-print-page-override";
+        document.head.appendChild(st);
+      }
+      st.textContent =
+        "@media print { @page { size: A4 landscape; margin: 8mm; } }";
+      document.body.classList.add("kiuki-print-mode");
+      window.print();
+    }
+
+    window.addEventListener("afterprint", () => {
+      document.body.classList.remove("kiuki-print-mode");
+      const st = document.getElementById("kiuki-print-page-override");
+      if (st) st.textContent = "";
+    });
+
+    function clearKiukiPeriodSummaryCells(text) {
+      const t = text === undefined ? "—" : text;
+      ["kiuki-per-val-uri", "kiuki-per-val-siire", "kiuki-per-val-arari", "kiuki-per-val-rate"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = t;
+      });
+    }
+
+    /** 合計は取得できた月のみ加算。金額の平均は合計÷「データ取得に成功した月数」。粗利率の合計は期間全体の粗利÷売上。 */
+    function renderKiukiPeriodSummary(results) {
+      let totU = 0;
+      let totS = 0;
+      let totA = 0;
+      let monthsWithData = 0;
+      for (let i = 0; i < results.length; i++) {
+        if (results[i] != null) {
+          monthsWithData += 1;
+        }
+        const r = computeTsukiMonthlySummaryFromData(results[i]);
+        if (r.nums) {
+          totU += r.nums.sumUri;
+          totS += r.nums.sumSiire;
+          totA += r.nums.sumArari;
+        }
+      }
+      const denom = monthsWithData > 0 ? monthsWithData : 0;
+      const avgU = denom > 0 ? Math.round(totU / denom) : null;
+      const avgS = denom > 0 ? Math.round(totS / denom) : null;
+      const avgA = denom > 0 ? Math.round(totA / denom) : null;
+      const totUf = formatTsukiInteger(Math.round(totU));
+      const totSf = formatTsukiInteger(Math.round(totS));
+      const totAf = formatTsukiInteger(Math.round(totA));
+      const avgUf = avgU !== null ? formatTsukiInteger(avgU) : "—";
+      const avgSf = avgS !== null ? formatTsukiInteger(avgS) : "—";
+      const avgAf = avgA !== null ? formatTsukiInteger(avgA) : "—";
+
+      let totalRate = "—";
+      if (Number.isFinite(totU) && totU !== 0) {
+        totalRate = ((totA / totU) * 100).toFixed(1) + "%";
+      } else if (totU === 0 && totS === 0) {
+        totalRate = "0.0%";
+      }
+
+      const setId = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v;
+      };
+      setId("kiuki-per-val-uri", `${totUf} (${avgUf})`);
+      setId("kiuki-per-val-siire", `${totSf} (${avgSf})`);
+      setId("kiuki-per-val-arari", `${totAf} (${avgAf})`);
+      setId("kiuki-per-val-rate", totalRate);
+    }
+
+    async function fetchKiukiReport() {
+      const startSel = document.getElementById("kiuki-start-select");
+      const monthsSel = document.getElementById("kiuki-months-select");
+      const theadRow = document.querySelector("#kiuki-thead tr");
+      const tbody = document.getElementById("kiuki-tbody");
+      if (!startSel || !monthsSel || !theadRow || !tbody) return;
+      const startVal = startSel.value;
+      const nMonths = parseInt(monthsSel.value, 10);
+      if (!startVal) {
+        alert("開始年月を選択してください。");
+        return;
+      }
+      if (!Number.isFinite(nMonths) || nMonths < 1 || nMonths > 12) {
+        alert("表示月数を選択してください。");
+        return;
+      }
+      const months = [];
+      for (let i = 0; i < nMonths; i++) {
+        const nendo = nendoStringForOffset(startVal, i);
+        if (!nendo) {
+          alert("開始年月の形式が解釈できません。");
+          return;
+        }
+        months.push({ nendo, label: nendo });
+      }
+      while (theadRow.children.length > 1) {
+        theadRow.removeChild(theadRow.lastChild);
+      }
+      months.forEach((m) => {
+        const th = document.createElement("th");
+        th.textContent = m.label;
+        theadRow.appendChild(th);
+      });
+      const rowLabels = ["自社総売上", "自社総仕入", "自社粗利益", "自社粗利率"];
+      tbody.innerHTML = rowLabels
+        .map(
+          (label) =>
+            `<tr><td class="kiuki-td-label">${label}</td>${months.map(() => '<td>読み込み中…</td>').join("")}</tr>`
+        )
+        .join("");
+      clearKiukiPeriodSummaryCells("…");
+      const dash = "—";
+      try {
+        const results = await Promise.all(
+          months.map(async ({ nendo }) => {
+            try {
+              const url = `${BASE_URL}?view=getsukireport&nendo=${encodeURIComponent(nendo)}`;
+              const res = await fetch(url);
+              if (!res.ok) return null;
+              return await res.json();
+            } catch {
+              return null;
+            }
+          })
+        );
+        const rows = tbody.querySelectorAll("tr");
+        const keys = ["sumUri", "sumSiire", "sumArari", "rateStr"];
+        for (let c = 0; c < nMonths; c++) {
+          const r = computeTsukiMonthlySummaryFromData(results[c]);
+          for (let rowIdx = 0; rowIdx < 4; rowIdx++) {
+            const cell = rows[rowIdx].children[c + 1];
+            if (cell) cell.textContent = r[keys[rowIdx]] ?? dash;
+          }
+        }
+        renderKiukiPeriodSummary(results);
+      } catch (e) {
+        console.error(e);
+        clearKiukiPeriodSummaryCells("—");
+        tbody.querySelectorAll("tr").forEach((row) => {
+          for (let c = 1; c < row.children.length; c++) {
+            row.children[c].textContent = "エラー";
+          }
+        });
+      }
     }
 
     async function fetchTsukiReport() {
