@@ -1,15 +1,32 @@
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
 const functions = require("firebase-functions");
 const { Pool } = require("pg");
 const cors = require("cors")({ origin: true });
 
-// ① データベースの接続設定（先ほど成功した設定をそのまま入力してください）
-const pool = new Pool({
-    host: "192.168.1.15",      // 社内PostgreSQLのIPアドレス
-    port: 5432,               // ポート番号（デフォルトは5432）
-    database: "towaDB", // データベース名
-    user: "towa_r",    // ユーザー名
-    password: "CapyTqn8vC11" // パスワード
-  });
+/** PostgreSQL 接続は環境変数のみ（本番は GCP で設定、ローカルは functions/.env を参照） */
+function buildPgConfig() {
+  const host = process.env.PGHOST;
+  const port = parseInt(process.env.PGPORT || "5432", 10);
+  const database = process.env.PGDATABASE;
+  const user = process.env.PGUSER;
+  const password = process.env.PGPASSWORD;
+  if (!host || !database || !user || password === undefined || password === "") {
+    throw new Error(
+      "PostgreSQL の環境変数が不足しています。PGHOST, PGDATABASE, PGUSER, PGPASSWORD を設定してください（functions/.env または Cloud Functions の環境変数）。"
+    );
+  }
+  return { host, port, database, user, password };
+}
+
+let poolSingleton = null;
+function getPool() {
+  if (!poolSingleton) {
+    poolSingleton = new Pool(buildPgConfig());
+  }
+  return poolSingleton;
+}
 
 /**
  * zaikom_d.nendo（集計年月）を uri_d.nohinymd / siire_d.sirymd と比較できる yyyy/mm/dd 形式の月初・月末へ変換する。
@@ -74,7 +91,7 @@ function prevMonthNendoCandidates(nendoRaw) {
         if (view === "sqlmeta") {
           const tableName = req.query.tableName;
           if (!tableName) {
-            const tablesResult = await pool.query(`
+            const tablesResult = await getPool().query(`
               SELECT table_name
               FROM information_schema.tables
               WHERE table_schema = 'public'
@@ -84,7 +101,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             return res.status(200).json({ tables: tablesResult.rows.map((row) => row.table_name) });
           }
 
-          const colsResult = await pool.query(
+          const colsResult = await getPool().query(
             `
               SELECT column_name
               FROM information_schema.columns
@@ -112,7 +129,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             return res.status(400).send("テーブル名またはカラム名が不正です");
           }
 
-          const tableCheck = await pool.query(
+          const tableCheck = await getPool().query(
             `
               SELECT 1
               FROM information_schema.tables
@@ -127,7 +144,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             return res.status(400).send("指定されたテーブルが存在しません");
           }
 
-          const columnCheck = await pool.query(
+          const columnCheck = await getPool().query(
             `
               SELECT column_name
               FROM information_schema.columns
@@ -159,7 +176,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             if (!dateColumn || !identPattern.test(dateColumn)) {
               return res.status(400).send("期間指定には dateColumn を指定してください");
             }
-            const dcCheck = await pool.query(
+            const dcCheck = await getPool().query(
               `
                 SELECT 1
                 FROM information_schema.columns
@@ -182,12 +199,12 @@ function prevMonthNendoCandidates(nendoRaw) {
           queryText += `
             LIMIT 50;
           `;
-          const result = await pool.query(queryText, queryValues);
+          const result = await getPool().query(queryText, queryValues);
           return res.status(200).json({ columns: columnNames, rows: result.rows });
         }
 
         if (view === "tanameta") {
-          const listResult = await pool.query(`
+          const listResult = await getPool().query(`
             SELECT DISTINCT a.nendo
             FROM tana_d AS a
             WHERE a.nendo IS NOT NULL
@@ -208,7 +225,7 @@ function prevMonthNendoCandidates(nendoRaw) {
           const v1 = String(nendo1).trim();
           const v2 = String(nendo2).trim();
 
-          const listResult = await pool.query(`
+          const listResult = await getPool().query(`
             SELECT DISTINCT a.nendo
             FROM tana_d AS a
             WHERE a.nendo IS NOT NULL;
@@ -231,7 +248,7 @@ function prevMonthNendoCandidates(nendoRaw) {
                 WHERE TRIM(BOTH FROM a.nendo::text) = TRIM(BOTH FROM $2::text)
               ) AS recent_zaikin;
           `;
-          const sumResult = await pool.query(sumSql, [v1, v2]);
+          const sumResult = await getPool().query(sumSql, [v1, v2]);
           const row = sumResult.rows[0] || {};
           return res.status(200).json({
             pastZaikin: row.past_zaikin,
@@ -242,7 +259,7 @@ function prevMonthNendoCandidates(nendoRaw) {
         }
 
         if (view === "zaikommeta") {
-          const listResult = await pool.query(`
+          const listResult = await getPool().query(`
             SELECT DISTINCT a.nendo
             FROM zaikom_d AS a
             WHERE a.nendo IS NOT NULL
@@ -261,7 +278,7 @@ function prevMonthNendoCandidates(nendoRaw) {
           }
           const v = String(nendo).trim();
 
-          const listResult = await pool.query(`
+          const listResult = await getPool().query(`
             SELECT DISTINCT a.nendo
             FROM zaikom_d AS a
             WHERE a.nendo IS NOT NULL;
@@ -271,7 +288,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             return res.status(400).send("指定された年度が在庫データに存在しません");
           }
 
-          const sumResult = await pool.query(
+          const sumResult = await getPool().query(
             `
               SELECT COALESCE(SUM(a.zaikin::numeric), 0) AS monthly_zaikin
               FROM zaikom_d AS a
@@ -293,7 +310,7 @@ function prevMonthNendoCandidates(nendoRaw) {
           }
           const v = String(nendo).trim();
 
-          const listResult = await pool.query(`
+          const listResult = await getPool().query(`
             SELECT DISTINCT a.nendo
             FROM zaikom_d AS a
             WHERE a.nendo IS NOT NULL;
@@ -309,7 +326,7 @@ function prevMonthNendoCandidates(nendoRaw) {
           }
           const { start: ymdStart, end: ymdEnd } = range;
 
-          const uriResult = await pool.query(
+          const uriResult = await getPool().query(
             `
               SELECT
                 SUM(
@@ -362,7 +379,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             `,
             [ymdStart, ymdEnd]
           );
-          const siireResult = await pool.query(
+          const siireResult = await getPool().query(
             `
               SELECT
                 SUM(
@@ -395,7 +412,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             `,
             [ymdStart, ymdEnd]
           );
-          const zaikResult = await pool.query(
+          const zaikResult = await getPool().query(
             `
               SELECT COALESCE(ROUND(SUM(a.zaikin::numeric)), 0)::bigint AS zaikin_sum
               FROM zaikom_d AS a
@@ -406,7 +423,7 @@ function prevMonthNendoCandidates(nendoRaw) {
           const prevCands = prevMonthNendoCandidates(v);
           let zaikinSumPrev = 0;
           if (prevCands.length > 0) {
-            const zaikPrevResult = await pool.query(
+            const zaikPrevResult = await getPool().query(
               `
                 SELECT COALESCE(ROUND(SUM(a.zaikin::numeric)), 0)::bigint AS zaikin_sum_prev
                 FROM zaikom_d AS a
@@ -483,7 +500,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             ORDER BY a.siryaku ASC;
           `;
           const values = [formattedStartDate, formattedEndDate];
-          const result = await pool.query(queryText, values);
+          const result = await getPool().query(queryText, values);
           return res.status(200).json(result.rows);
         }
 
@@ -506,7 +523,7 @@ function prevMonthNendoCandidates(nendoRaw) {
             ORDER BY nohinymd ASC;
           `;
           const values = [formattedStartDate, formattedEndDate, tknm];
-          const result = await pool.query(queryText, values);
+          const result = await getPool().query(queryText, values);
           return res.status(200).json(result.rows);
         }
 
@@ -528,7 +545,7 @@ function prevMonthNendoCandidates(nendoRaw) {
           ORDER BY tknm ASC;
         `;
         const values = [formattedStartDate, formattedEndDate];
-        const result = await pool.query(queryText, values);
+        const result = await getPool().query(queryText, values);
 
         res.status(200).json(result.rows);
 

@@ -860,7 +860,14 @@
   </div>
 
   <script>
-    const BASE_URL = "http://127.0.0.1:5001/work-postgres-test/us-central1/getData";
+    const BASE_URL = (() => {
+      const h = window.location.hostname;
+      const isLocal = h === "localhost" || h === "127.0.0.1";
+      if (isLocal) {
+        return `http://${h}:5001/work-postgres-test/us-central1/getData`;
+      }
+      return `${window.location.origin}/getData`;
+    })();
     const SUMMARY_MONEY_KEYS = ["lz_kin", "pz_kin", "gaityu_kin", "tyukai_kin", "zaiko_kin", "hoka_kin", "total_kin"];
     const PURCHASE_SUMMARY_MONEY_KEYS = ["siire_kin", "gaityu_kin", "chukai_zai", "total_kin"];
     let summarySortState = { key: null, dir: "asc" };
